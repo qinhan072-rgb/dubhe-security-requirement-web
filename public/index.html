@@ -14,8 +14,14 @@
       </div>
       <div class="top-actions">
         <button class="ghost" id="newProjectBtn" type="button">新建</button>
-        <button class="ghost" id="exportCsvBtn" type="button">导出 CSV</button>
-        <button class="ghost" id="exportJsonBtn" type="button">导出 JSON</button>
+        <div class="export-combo">
+          <button class="ghost" id="exportMenuBtn" type="button" aria-expanded="false">导出</button>
+          <div class="export-menu" id="exportMenu" hidden>
+            <button type="button" id="exportCsvBtn">CSV 文件</button>
+            <button type="button" id="exportJsonBtn">JSON 文件</button>
+            <button type="button" id="exportWordBtn">客户确认版 Word</button>
+          </div>
+        </div>
         <button class="primary" id="saveBtn" type="button">保存</button>
       </div>
     </header>
@@ -47,27 +53,18 @@
       </aside>
 
       <section class="content">
-        <section class="card intro-card">
-          <div>
-            <span class="eyebrow">配置方式</span>
-            <h2>按摄像头组选择识别功能</h2>
-            <p>用途相同的摄像头放在同一组；位置、数量或识别目标不同，则新增另一组。</p>
-          </div>
-        </section>
-
         <section class="card" id="cameraCard">
           <div class="section-heading">
             <span class="step">01</span>
             <div>
               <h2>摄像头组与功能选择</h2>
-              <p>每一组摄像头独立填写数量、位置和需要识别的问题。</p>
+              <p>用途相同的摄像头放在同一组；位置、数量或识别目标不同，则新增另一组。</p>
             </div>
           </div>
           <div class="group-list" id="cameraGroupList"></div>
           <button class="add-group-large" id="addGroupLargeBtn" type="button">
             <span>+</span>
             <strong>新增另一组摄像头</strong>
-            <small>例如仓库、门岗、消防通道、周界等不同位置可分别配置。</small>
           </button>
         </section>
 
@@ -115,9 +112,10 @@
             </div>
           </div>
           <div class="attachment-row">
-            <input id="fileInput" type="file" multiple />
+            <input id="fileInput" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar" />
             <button class="ghost" id="uploadBtn" type="button">上传附件</button>
           </div>
+          <p class="attachment-note">支持图片、PDF、Office、CSV、TXT、压缩包，单个文件不超过 20MB。</p>
           <div id="attachmentList" class="attachment-list"></div>
         </section>
       </section>

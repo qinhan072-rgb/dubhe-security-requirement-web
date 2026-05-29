@@ -8,6 +8,11 @@ const state = {
   projects: []
 };
 
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "zip", "rar"
+]);
+
 const els = {
   conditionsForm: document.querySelector("#conditionsForm"),
   cameraGroupList: document.querySelector("#cameraGroupList"),
@@ -21,8 +26,11 @@ const els = {
   fileInput: document.querySelector("#fileInput"),
   uploadBtn: document.querySelector("#uploadBtn"),
   attachmentList: document.querySelector("#attachmentList"),
+  exportMenuBtn: document.querySelector("#exportMenuBtn"),
+  exportMenu: document.querySelector("#exportMenu"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
+  exportWordBtn: document.querySelector("#exportWordBtn"),
   toast: document.querySelector("#toast")
 };
 
@@ -69,6 +77,7 @@ function bindEvents() {
     const group = findGroup(groupId);
     if (!group) return;
     group[key] = event.target.value;
+    updateGroupDynamicUi(group);
     updateCompletion();
   });
 
@@ -102,7 +111,10 @@ function bindEvents() {
     if (action === "duplicate") duplicateGroup(groupId);
     if (action === "delete") deleteGroup(groupId);
     if (action === "add-feature") addFeature(groupId, actionEl.dataset.featureId);
-    if (action === "add-all-recommended") addAllRecommended(groupId);
+    if (action === "add-all-recommended") {
+      const addedCount = addAllRecommended(groupId);
+      showToast(addedCount ? `已添加 ${addedCount} 项当前推荐。` : "当前没有可添加的推荐项。");
+    }
     renderGroups();
     updateCompletion();
   });
@@ -110,8 +122,30 @@ function bindEvents() {
   els.saveBtn.addEventListener("click", () => saveProject());
   els.newProjectBtn.addEventListener("click", newProject);
   els.uploadBtn.addEventListener("click", uploadFiles);
+  els.exportMenuBtn.addEventListener("click", () => toggleExportMenu());
   els.exportCsvBtn.addEventListener("click", () => exportProject("csv"));
   els.exportJsonBtn.addEventListener("click", () => exportProject("json"));
+  els.exportWordBtn.addEventListener("click", () => exportProject("doc"));
+  els.attachmentList.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-action='delete-attachment']");
+    if (!deleteButton) return;
+    deleteAttachment(deleteButton.dataset.attachmentId);
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".export-combo")) return;
+    closeExportMenu();
+  });
+}
+
+function toggleExportMenu() {
+  const isOpen = !els.exportMenu.hidden;
+  els.exportMenu.hidden = isOpen;
+  els.exportMenuBtn.setAttribute("aria-expanded", String(!isOpen));
+}
+
+function closeExportMenu() {
+  els.exportMenu.hidden = true;
+  els.exportMenuBtn.setAttribute("aria-expanded", "false");
 }
 
 function emptyProject() {
@@ -176,7 +210,6 @@ function renderGroups() {
 
 function groupCard(group, index) {
   const recommended = recommendFeatures(group);
-  const featureCount = group.features.length;
   const selected = new Set(group.features);
   const complete = isGroupComplete(group);
   const expanded = Boolean(group.open);
@@ -186,14 +219,16 @@ function groupCard(group, index) {
         <div class="group-title">
           <span class="group-index">${index + 1}</span>
           <div>
-            <strong>${escapeHtml(group.name || `摄像头组 ${index + 1}`)}</strong>
-            <span>${Number(group.cameraCount || 1)} 路摄像头 · 已选 ${featureCount} 项功能 · ${complete ? "已完成" : "待配置"}</span>
+            <div class="group-title-line">
+              <strong data-group-title="${group.id}">${escapeHtml(group.name || `摄像头组 ${index + 1}`)}</strong>
+              <button class="small ghost copy-inline" type="button" data-action="duplicate" data-group-id="${group.id}">复制本组</button>
+            </div>
+            <span data-group-summary="${group.id}">${groupSummary(group)}</span>
           </div>
         </div>
         <div class="group-actions">
           <span class="status-pill ${complete ? "ok" : ""}">${complete ? "已完成" : "待填写"}</span>
-          <button class="small ghost" type="button" data-action="toggle-group" data-group-id="${group.id}">${expanded ? "收起" : "展开配置"}</button>
-          <button class="small ghost" type="button" data-action="duplicate" data-group-id="${group.id}">复制</button>
+          <span class="toggle-hint">${expanded ? "点击收起" : "点击展开"}</span>
           <button class="small danger" type="button" data-action="delete" data-group-id="${group.id}">删除</button>
         </div>
       </div>
@@ -217,9 +252,11 @@ function groupCard(group, index) {
             <h3>功能选择</h3>
             <p>同一组摄像头可同时选择多项识别功能。</p>
           </div>
-          <button class="small ghost" type="button" data-action="add-all-recommended" data-group-id="${group.id}">添加全部推荐</button>
+          <button class="small ghost" type="button" data-action="add-all-recommended" data-group-id="${group.id}">添加当前推荐</button>
         </div>
-        ${recommendationBlock(group, recommended)}
+        <div data-recommendations="${group.id}">
+          ${recommendationBlock(group, recommended)}
+        </div>
         <div class="feature-categories">
           ${state.catalog.map((category) => featureCategory(category, group, selected)).join("")}
         </div>
@@ -229,6 +266,10 @@ function groupCard(group, index) {
       </div>
     </article>
   `;
+}
+
+function groupSummary(group) {
+  return `${Number(group.cameraCount || 1)} 路摄像头 · 已选 ${group.features.length} 项功能 · ${isGroupComplete(group) ? "已完成" : "待配置"}`;
 }
 
 function field(label, group, key, placeholder, type = "text") {
@@ -259,10 +300,11 @@ function selectField(label, group, key, options) {
 
 function recommendationBlock(group, recommended) {
   if (!recommended.length) {
+    const hasText = normalize(`${group.name} ${group.locationNote} ${group.notes}`).trim();
     return `
       <div class="recommend-box">
         <strong>推荐功能</strong>
-        <span>填写组名或位置后，可出现可点击的推荐项；推荐项不会自动勾选。</span>
+        <span>${hasText ? "暂无匹配推荐，可从下方功能列表手动选择。" : "填写组名或位置后，可出现可点击的推荐项；推荐项不会自动勾选。"}</span>
       </div>
     `;
   }
@@ -271,8 +313,9 @@ function recommendationBlock(group, recommended) {
       <strong>推荐功能</strong>
       <div class="recommend-list">
         ${recommended.map((item) => `
-          <button class="chip recommended" type="button" data-action="add-feature" data-group-id="${group.id}" data-feature-id="${item.id}">
-            ${escapeHtml(item.name)}
+          <button class="chip recommended" type="button" data-action="add-feature" data-group-id="${group.id}" data-feature-id="${item.id}" title="命中：${escapeAttr(item.matches.join("、"))}">
+            <span>${escapeHtml(item.name)}</span>
+            <small>命中：${escapeHtml(item.matches.join("、"))}</small>
           </button>
         `).join("")}
       </div>
@@ -311,11 +354,20 @@ function recommendFeatures(group) {
   for (const category of state.catalog) {
     for (const item of category.items) {
       if (selected.has(item.id)) continue;
-      const score = (item.keywords || []).reduce((total, keyword) => total + (text.includes(normalize(keyword)) ? 1 : 0), 0);
-      if (score > 0) scored.push({ ...item, score });
+      const matches = (item.keywords || []).filter((keyword) => text.includes(normalize(keyword)));
+      if (matches.length > 0) scored.push({ ...item, score: matches.length, matches: [...new Set(matches)] });
     }
   }
   return scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-Hans-CN")).slice(0, 8);
+}
+
+function updateGroupDynamicUi(group) {
+  const title = document.querySelector(`[data-group-title="${group.id}"]`);
+  if (title) title.textContent = group.name || "未命名摄像头组";
+  const summary = document.querySelector(`[data-group-summary="${group.id}"]`);
+  if (summary) summary.textContent = groupSummary(group);
+  const target = document.querySelector(`[data-recommendations="${group.id}"]`);
+  if (target) target.innerHTML = recommendationBlock(group, recommendFeatures(group));
 }
 
 function normalize(value) {
@@ -343,8 +395,14 @@ function addFeature(groupId, featureId) {
 
 function addAllRecommended(groupId) {
   const group = findGroup(groupId);
-  if (!group) return;
-  for (const item of recommendFeatures(group)) addFeature(groupId, item.id);
+  if (!group) return 0;
+  let addedCount = 0;
+  for (const item of recommendFeatures(group)) {
+    const before = group.features.length;
+    addFeature(groupId, item.id);
+    if (group.features.length > before) addedCount += 1;
+  }
+  return addedCount;
 }
 
 function addCameraGroup() {
@@ -465,6 +523,11 @@ async function uploadFiles() {
     showToast("请先选择附件。");
     return;
   }
+  const fileIssue = validateFiles(files);
+  if (fileIssue) {
+    showToast(fileIssue);
+    return;
+  }
   await saveProject(true);
 
   const data = new FormData();
@@ -478,10 +541,23 @@ async function uploadFiles() {
   showToast("附件已上传。");
 }
 
+function validateFiles(files) {
+  for (const file of files) {
+    const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) return `不支持的附件类型：${file.name}`;
+    if (file.size > MAX_ATTACHMENT_SIZE) return `附件超过 20MB：${file.name}`;
+  }
+  return "";
+}
+
 async function exportProject(type) {
+  closeExportMenu();
   await saveProject(true);
   const issues = validationIssues();
-  if (issues.length && !confirm(`仍有 ${issues.length} 项未完成，是否继续导出？`)) return;
+  if (issues.length) {
+    const issueText = issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n");
+    if (!confirm(`以下内容仍未完成：\n\n${issueText}\n\n是否继续导出？`)) return;
+  }
   window.location.href = `/api/projects/${encodeURIComponent(state.id)}/export.${type}`;
 }
 
@@ -492,10 +568,26 @@ function renderAttachments() {
   }
   els.attachmentList.innerHTML = state.attachments.map((file) => `
     <div class="attachment-item">
-      <a href="${file.url}" target="_blank" rel="noreferrer">${escapeHtml(file.name)}</a>
-      <span>${formatSize(file.size)}</span>
+      <div class="attachment-main">
+        <a href="${file.url}" target="_blank" rel="noreferrer">${escapeHtml(file.name)}</a>
+        <span>${formatSize(file.size)} · ${escapeHtml(file.mimeType || "未知类型")} · ${formatDate(file.createdAt)}</span>
+      </div>
+      <div class="attachment-actions">
+        <a class="small-link" href="${file.url}" target="_blank" rel="noreferrer">预览</a>
+        <button class="small danger" type="button" data-action="delete-attachment" data-attachment-id="${file.id}">删除</button>
+      </div>
     </div>
   `).join("");
+}
+
+async function deleteAttachment(attachmentId) {
+  if (!state.id || !attachmentId) return;
+  if (!confirm("确定删除这个附件吗？")) return;
+  const response = await fetchJson(`/api/projects/${encodeURIComponent(state.id)}/attachments/${encodeURIComponent(attachmentId)}`, {
+    method: "DELETE"
+  });
+  applyProject(response.project);
+  showToast("附件已删除。");
 }
 
 async function refreshProjectList() {
@@ -517,15 +609,19 @@ async function refreshProjectList() {
 }
 
 function updateCompletion() {
+  const totalGroups = state.cameraGroups.length;
+  const completeGroups = state.cameraGroups.filter(isGroupComplete).length;
+  const percent = totalGroups ? Math.round((completeGroups / totalGroups) * 100) : 0;
+  const groupsWithInfo = state.cameraGroups.filter((group) => group.name && Number(group.cameraCount) > 0).length;
+  const groupsWithFeatures = state.cameraGroups.filter((group) => group.features.length > 0).length;
   const checks = [
-    ["至少一个摄像头组", state.cameraGroups.length > 0],
-    ["每组填写名称和数量", state.cameraGroups.every((group) => group.name && Number(group.cameraCount) > 0)],
-    ["每组选择至少一项功能", state.cameraGroups.every((group) => group.features.length > 0)]
+    [`当前 ${totalGroups} 个摄像头组`, totalGroups > 0],
+    [`${completeGroups}/${totalGroups} 组已完成`, totalGroups > 0 && completeGroups === totalGroups],
+    [`${groupsWithInfo}/${totalGroups} 组已填写名称和数量`, totalGroups > 0 && groupsWithInfo === totalGroups],
+    [`${groupsWithFeatures}/${totalGroups} 组已选择功能`, totalGroups > 0 && groupsWithFeatures === totalGroups]
   ];
-  const done = checks.filter(([, ok]) => ok).length;
-  const percent = Math.round((done / checks.length) * 100);
   els.progressBar.style.width = `${percent}%`;
-  els.progressText.textContent = `${done}/${checks.length} 项已完成`;
+  els.progressText.textContent = `${completeGroups}/${totalGroups} 组完成`;
   els.completionList.innerHTML = checks.map(([label, ok]) => `
     <li class="${ok ? "ok" : ""}"><span>${ok ? "✓" : "○"}</span>${label}</li>
   `).join("");

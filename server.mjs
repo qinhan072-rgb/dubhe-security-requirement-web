@@ -12,6 +12,10 @@ const UPLOAD_DIR = path.join(__dirname, "uploads");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DB_PATH = path.join(DATA_DIR, "requirements.db");
 const PORT = Number(process.env.PORT || 4173);
+const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
+const ALLOWED_UPLOAD_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "zip", "rar"
+]);
 
 mkdirSync(DATA_DIR, { recursive: true });
 mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -189,6 +193,7 @@ const statements = {
   projectList: db.prepare("SELECT id, company, project_name, updated_at FROM projects ORDER BY updated_at DESC LIMIT 50"),
   groupsByProject: db.prepare("SELECT * FROM camera_groups WHERE project_id = ? ORDER BY sort_order ASC"),
   attachmentsByProject: db.prepare("SELECT * FROM attachments WHERE project_id = ? ORDER BY created_at DESC"),
+  attachmentById: db.prepare("SELECT * FROM attachments WHERE id = ? AND project_id = ?"),
   insertProject: db.prepare(`
     INSERT INTO projects (id, company, project_name, industry, address, contact_name, contact_phone, expected_launch, project_status, conditions_json, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -210,7 +215,8 @@ const statements = {
   insertAttachment: db.prepare(`
     INSERT INTO attachments (id, project_id, original_name, stored_name, mime_type, size, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `)
+  `),
+  deleteAttachment: db.prepare("DELETE FROM attachments WHERE id = ? AND project_id = ?")
 };
 
 function nowIso() {
@@ -386,6 +392,11 @@ async function handleUpload(req, res, projectId) {
   });
   const formData = await request.formData();
   const files = formData.getAll("files").filter((file) => file && file.name && file.size > 0);
+  for (const file of files) {
+    const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+    if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) return sendJson(res, 400, { error: `不支持的附件类型：${file.name}` });
+    if (file.size > MAX_UPLOAD_SIZE) return sendJson(res, 400, { error: `附件超过 20MB：${file.name}` });
+  }
   const targetDir = path.join(UPLOAD_DIR, projectId);
   mkdirSync(targetDir, { recursive: true });
 
@@ -403,6 +414,24 @@ async function handleUpload(req, res, projectId) {
   sendJson(res, 200, { uploaded, project: getProject(projectId) });
 }
 
+async function handleDeleteAttachment(res, projectId, attachmentId) {
+  const project = getProject(projectId);
+  if (!project) return sendJson(res, 404, { error: "项目不存在" });
+
+  const attachment = statements.attachmentById.get(attachmentId, projectId);
+  if (!attachment) return sendJson(res, 404, { error: "附件不存在" });
+
+  statements.deleteAttachment.run(attachmentId, projectId);
+  const filePath = path.join(UPLOAD_DIR, projectId, attachment.stored_name);
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
+  return sendJson(res, 200, { project: getProject(projectId) });
+}
+
 function safeFileName(name) {
   return name.replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 120) || "attachment";
 }
@@ -411,6 +440,15 @@ function csvEscape(value) {
   const text = value == null ? "" : String(value);
   if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
+}
+
+function htmlEscape(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function buildCsv(project) {
@@ -454,12 +492,97 @@ function buildCsv(project) {
   return `\ufeff${lines.join("\r\n")}`;
 }
 
+function featureNames(featureIds) {
+  return featureIds.map((featureId) => featureMap.get(featureId)?.name || featureId);
+}
+
+function buildCustomerDoc(project) {
+  const conditions = Object.entries(project.conditions || {}).filter(([, value]) => String(value || "").trim());
+  const unresolved = [];
+  project.cameraGroups.forEach((group, index) => {
+    if (!group.name) unresolved.push(`第 ${index + 1} 组未填写组名`);
+    if (!Number(group.cameraCount)) unresolved.push(`第 ${index + 1} 组未填写摄像头数量`);
+    if (!group.features.length) unresolved.push(`第 ${index + 1} 组未选择识别功能`);
+  });
+  const exportedAt = new Date().toLocaleString("zh-CN", { hour12: false });
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DUBHE智慧安防需求确认单</title>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial, sans-serif; color: #07182b; line-height: 1.55; }
+    h1 { font-size: 26px; margin: 0 0 8px; }
+    h2 { margin: 26px 0 10px; font-size: 18px; border-bottom: 1px solid #d9e3ea; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
+    th, td { border: 1px solid #d9e3ea; padding: 8px 10px; vertical-align: top; }
+    th { background: #f2f6fa; text-align: left; }
+    .muted { color: #5f6f83; }
+  </style>
+</head>
+<body>
+  <h1>DUBHE智慧安防需求确认单</h1>
+  <p class="muted">导出时间：${htmlEscape(exportedAt)}　配置名称：${htmlEscape(project.project?.projectName || "智慧安防需求配置")}</p>
+
+  <h2>摄像头组与识别功能</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>摄像头组</th>
+        <th>数量</th>
+        <th>位置备注</th>
+        <th>接入信息</th>
+        <th>识别功能</th>
+        <th>补充说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${project.cameraGroups.map((group) => `
+        <tr>
+          <td>${htmlEscape(group.name || "未填写")}</td>
+          <td>${htmlEscape(group.cameraCount || "")}</td>
+          <td>${htmlEscape(group.locationNote || "")}</td>
+          <td>${htmlEscape([group.vendor, group.resolution, group.accessMethod].filter(Boolean).join(" / "))}</td>
+          <td>${htmlEscape(featureNames(group.features || []).join("、") || "未选择")}</td>
+          <td>${htmlEscape(group.notes || "")}</td>
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>
+
+  <h2>整体约束</h2>
+  <table>
+    <tbody>
+      ${conditions.length ? conditions.map(([key, value]) => `
+        <tr><th>${htmlEscape(conditionLabels[key] || key)}</th><td>${htmlEscape(Array.isArray(value) ? value.join("；") : value)}</td></tr>
+      `).join("") : `<tr><td class="muted">暂无填写。</td></tr>`}
+    </tbody>
+  </table>
+
+  <h2>待确认问题</h2>
+  ${unresolved.length ? `<ol>${unresolved.map((item) => `<li>${htmlEscape(item)}</li>`).join("")}</ol>` : `<p>当前未发现必填项缺失。</p>`}
+
+  <h2>附件清单</h2>
+  ${project.attachments.length ? `<ul>${project.attachments.map((file) => `<li>${htmlEscape(file.name)}（${htmlEscape(file.size)} bytes）</li>`).join("")}</ul>` : `<p class="muted">暂无附件。</p>`}
+</body>
+</html>`;
+}
+
 function serveExport(res, project, type) {
   if (type === "json") {
     const body = JSON.stringify(project, null, 2);
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Disposition": `attachment; filename="dubhe-requirement-${project.id}.json"`
+    });
+    res.end(body);
+    return;
+  }
+  if (type === "doc") {
+    const body = `\ufeff${buildCustomerDoc(project)}`;
+    res.writeHead(200, {
+      "Content-Type": "application/msword; charset=utf-8",
+      "Content-Disposition": `attachment; filename="dubhe-requirement-summary-${project.id}.doc"`
     });
     res.end(body);
     return;
@@ -482,7 +605,17 @@ function contentType(filePath) {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml"
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".pdf": "application/pdf",
+    ".csv": "text/csv; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".zip": "application/zip"
   }[ext] || "application/octet-stream";
 }
 
@@ -522,6 +655,12 @@ async function router(req, res) {
       return sendJson(res, 200, { project: saved });
     }
 
+    const attachmentMatch = pathname.match(/^\/api\/projects\/([^/]+)\/attachments\/([^/]+)$/);
+    if (attachmentMatch && req.method === "DELETE") {
+      const [, projectId, attachmentId] = attachmentMatch;
+      return handleDeleteAttachment(res, projectId, attachmentId);
+    }
+
     const projectMatch = pathname.match(/^\/api\/projects\/([^/]+)(?:\/([^/]+))?$/);
     if (projectMatch) {
       const [, projectId, action] = projectMatch;
@@ -532,10 +671,11 @@ async function router(req, res) {
       if (req.method === "POST" && action === "upload") {
         return handleUpload(req, res, projectId);
       }
-      if (req.method === "GET" && (action === "export.csv" || action === "export.json")) {
+      if (req.method === "GET" && (action === "export.csv" || action === "export.json" || action === "export.doc")) {
         const project = getProject(projectId);
         if (!project) return sendJson(res, 404, { error: "项目不存在" });
-        return serveExport(res, project, action.endsWith("json") ? "json" : "csv");
+        const type = action.endsWith("json") ? "json" : action.endsWith("doc") ? "doc" : "csv";
+        return serveExport(res, project, type);
       }
     }
 

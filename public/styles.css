@@ -96,6 +96,55 @@ h3 {
   flex-wrap: wrap;
 }
 
+.export-combo {
+  position: relative;
+}
+
+.export-combo > button::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  border-top: 5px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  vertical-align: middle;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 168px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(7, 24, 43, 0.16);
+}
+
+.export-menu[hidden] {
+  display: none;
+}
+
+.export-menu button {
+  justify-content: flex-start;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+
+.export-menu button:hover {
+  background: #f2f6fa;
+  transform: none;
+}
+
 button {
   min-height: 40px;
   border: 0;
@@ -278,32 +327,11 @@ button.small {
   padding: 24px;
 }
 
-.intro-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  background: linear-gradient(135deg, #ffffff 0%, #f4fbfa 100%);
-}
-
-.intro-card p,
 .section-heading p,
 .subheading p {
   margin-top: 6px;
   color: var(--muted);
   line-height: 1.55;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  margin-bottom: 8px;
-  padding: 0 9px;
-  border-radius: 999px;
-  color: var(--green);
-  background: #e8f7f2;
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .section-heading {
@@ -403,6 +431,13 @@ textarea:focus {
   min-width: 0;
 }
 
+.group-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .group-index {
   display: inline-grid;
   place-items: center;
@@ -424,6 +459,14 @@ textarea:focus {
   overflow-wrap: anywhere;
 }
 
+.copy-inline {
+  min-height: 28px;
+  padding: 0 9px;
+  color: var(--blue);
+  background: #edf4ff;
+  border-color: #b9d0fb;
+}
+
 .group-title span {
   display: block;
   margin-top: 3px;
@@ -436,6 +479,27 @@ textarea:focus {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.toggle-hint {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.toggle-hint::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.group-card.is-open .toggle-hint::after {
+  transform: rotate(225deg) translateY(-2px);
 }
 
 .status-pill {
@@ -516,8 +580,8 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 6px 10px;
   color: var(--ink);
   background: #fff;
   border: 1px solid #bcd8d0;
@@ -525,11 +589,24 @@ textarea:focus {
   font-weight: 800;
 }
 
-.chip.recommended::before {
+.chip.recommended {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chip.recommended span::before {
   content: "推荐";
+  margin-right: 6px;
   color: var(--teal);
   font-size: 12px;
   font-weight: 900;
+}
+
+.chip.recommended small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .feature-categories {
@@ -614,12 +691,14 @@ textarea:focus {
 }
 
 .add-group-large {
-  display: grid;
-  place-items: center;
-  gap: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   width: 100%;
-  min-height: 120px;
+  min-height: 64px;
   margin-top: 14px;
+  padding: 0 18px;
   color: var(--ink);
   background:
     linear-gradient(#fff, #fff) padding-box,
@@ -631,18 +710,17 @@ textarea:focus {
 .add-group-large span {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   color: #fff;
   background: var(--blue);
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
 }
 
-.add-group-large small {
-  color: var(--muted);
-  font-weight: 600;
+.add-group-large strong {
+  font-size: 16px;
 }
 
 .attachment-card {
@@ -653,6 +731,12 @@ textarea:focus {
   flex: 1;
   min-width: 280px;
   background: #fbfdfe;
+}
+
+.attachment-note {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .attachment-list {
@@ -672,7 +756,26 @@ textarea:focus {
   border-radius: 8px;
 }
 
-.attachment-item a {
+.attachment-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.attachment-main span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.attachment-item a,
+.small-link {
   color: var(--blue);
   text-decoration: none;
   font-weight: 800;
@@ -745,6 +848,80 @@ textarea:focus {
 }
 
 @media (max-width: 720px) {
+  body {
+    padding-bottom: 78px;
+  }
+
+  h1 {
+    font-size: 23px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .topbar {
+    position: static;
+  }
+
+  .top-actions {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    z-index: 35;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 14px 36px rgba(7, 24, 43, 0.18);
+    backdrop-filter: blur(14px);
+  }
+
+  .top-actions button,
+  .top-actions .export-combo {
+    width: 100%;
+  }
+
+  .top-actions button {
+    padding: 0 10px;
+  }
+
+  .export-menu {
+    top: auto;
+    bottom: calc(100% + 8px);
+    right: 0;
+  }
+
+  .sidebar {
+    display: grid;
+    gap: 10px;
+  }
+
+  .sidebar .panel {
+    padding: 12px;
+    box-shadow: none;
+  }
+
+  .sidebar .panel:nth-of-type(3) {
+    display: none;
+  }
+
+  .checklist {
+    display: none;
+  }
+
+  .side-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .side-nav a {
+    padding: 9px 8px;
+    text-align: center;
+  }
+
   .group-header,
   .subheading {
     align-items: stretch;
@@ -763,11 +940,9 @@ textarea:focus {
     padding: 18px;
   }
 
-  .top-actions {
-    width: 100%;
-  }
-
-  .top-actions button {
-    flex: 1;
+  .attachment-item,
+  .attachment-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
