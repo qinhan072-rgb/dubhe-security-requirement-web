@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DUBHE 智慧安防需求配置</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="brand">DUBHE Security</div>
+        <h1>智慧安防需求配置</h1>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" id="newProjectBtn" type="button">新建</button>
+        <button class="primary" id="saveBtn" type="button">保存</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-title">填写进度</div>
+          <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-text" id="progressText">准备中</div>
+          <ul class="checklist" id="completionList"></ul>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">填写路径</div>
+          <nav class="side-nav">
+            <a href="#projectCard">1. 客户信息</a>
+            <a href="#cameraCard">2. 摄像头组</a>
+            <a href="#conditionsCard">3. 整体约束</a>
+            <a href="#exportCard">4. 保存导出</a>
+          </nav>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">已有草稿</div>
+          <div id="projectList" class="project-list"></div>
+        </div>
+      </aside>
+
+      <section class="content">
+        <section class="card accordion-card is-open" id="projectCard" data-section="project">
+          <button class="accordion-head" type="button" data-action="toggle-section" data-section="project">
+            <span class="step">01</span>
+            <span class="accordion-title">
+              <strong>客户信息</strong>
+              <small>只填写联系和项目识别信息，其他商务内容线下沟通。</small>
+            </span>
+            <span class="section-status" id="projectStatusText">待填写</span>
+          </button>
+          <div class="accordion-body">
+            <p class="guide-text">先留下基本联系方式。后面每一组摄像头可以单独选择不同功能。</p>
+            <form class="grid-form compact-form" id="projectForm">
+              <label>客户单位<input data-project="company" placeholder="例如：某某制造有限公司" /></label>
+              <label>项目/园区名称<input data-project="projectName" placeholder="例如：一号园区 / 仓库试点" /></label>
+              <label>所属行业<input data-project="industry" placeholder="制造业 / 物流园区 / 能源化工..." /></label>
+              <label>项目地址/园区<input data-project="address" placeholder="城市、园区或厂区" /></label>
+              <label>联系人<input data-project="contactName" placeholder="姓名" /></label>
+              <label>联系电话/微信<input data-project="contactPhone" placeholder="手机号或微信" /></label>
+            </form>
+          </div>
+        </section>
+
+        <section class="card" id="cameraCard">
+          <div class="section-heading with-action">
+            <div class="heading-left">
+              <span class="step">02</span>
+              <div>
+                <h2>摄像头组与功能选择</h2>
+                <p>把同一类摄像头放进一组：例如“仓库摄像头 12 路”“门岗摄像头 2 路”。每组可以选择不同功能。</p>
+              </div>
+            </div>
+            <button class="primary" id="addGroupBtn" type="button">+ 新增摄像头组</button>
+          </div>
+          <div class="group-guide">
+            <strong>填写方法</strong>
+            <span>展开一个摄像头组 → 填数量和接入信息 → 选择要识别的功能 → 完成后收起。下面可以继续增加其他摄像头组。</span>
+          </div>
+          <div class="group-list" id="cameraGroupList"></div>
+          <button class="add-group-large" id="addGroupLargeBtn" type="button">
+            <span>+</span>
+            <strong>新增另一组摄像头</strong>
+            <small>不同位置、数量或功能不同的摄像头，请分开新增。</small>
+          </button>
+        </section>
+
+        <section class="card accordion-card" id="conditionsCard" data-section="conditions">
+          <button class="accordion-head" type="button" data-action="toggle-section" data-section="conditions">
+            <span class="step">03</span>
+            <span class="accordion-title">
+              <strong>整体约束</strong>
+              <small>只保留影响 AI 部署和系统对接的少量信息。</small>
+            </span>
+            <span class="section-status" id="conditionsStatusText">可选</span>
+          </button>
+          <div class="accordion-body">
+            <form class="grid-form compact-form" id="conditionsForm">
+              <label>系统网络环境
+                <select data-condition="internetPolicy">
+                  <option value="">请选择</option>
+                  <option>可访问互联网</option>
+                  <option>仅内网</option>
+                  <option>需审批后访问外网</option>
+                  <option>完全离线</option>
+                  <option>待确认</option>
+                </select>
+              </label>
+              <label>AI方式限制
+                <select data-condition="aiPolicy">
+                  <option value="">请选择</option>
+                  <option>可调用外部AI服务</option>
+                  <option>本地优先</option>
+                  <option>只能本地</option>
+                  <option>待确认</option>
+                </select>
+              </label>
+              <label>数据安全/保密要求<input data-condition="compliance" placeholder="没有可写无；有要求请简述" /></label>
+              <label>消息通知对接<input data-condition="messageIntegration" placeholder="企业微信 / 钉钉 / 飞书 / 短信 / 不需要" /></label>
+              <label>业务系统对接<input data-condition="systemIntegration" placeholder="OA / 工单 / 安防平台 / 不需要" /></label>
+              <label class="span-2">其他说明<textarea data-condition="extraNotes" placeholder="标准菜单外的识别目标、特殊流程、补充说明等"></textarea></label>
+            </form>
+          </div>
+        </section>
+
+        <section class="card accordion-card" id="exportCard" data-section="export">
+          <button class="accordion-head" type="button" data-action="toggle-section" data-section="export">
+            <span class="step">04</span>
+            <span class="accordion-title">
+              <strong>保存与导出</strong>
+              <small>填写完成后保存，内部可导出 CSV 或 JSON。附件可选。</small>
+            </span>
+            <span class="section-status">可选</span>
+          </button>
+          <div class="accordion-body">
+            <div class="attachment-row">
+              <input id="fileInput" type="file" multiple />
+              <button class="ghost" id="uploadBtn" type="button">上传附件</button>
+            </div>
+            <div id="attachmentList" class="attachment-list"></div>
+            <div class="export-row">
+              <button class="primary" id="exportCsvBtn" type="button">导出 CSV</button>
+              <button class="ghost" id="exportJsonBtn" type="button">导出 JSON</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="emptyGroupTemplate">
+      <div class="empty-state">
+        <h3>还没有摄像头组</h3>
+        <p>点击“新增摄像头组”，从一个摄像头或一类摄像头开始填写。</p>
+      </div>
+    </template>
+
+    <div class="toast" id="toast"></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
