@@ -418,18 +418,12 @@ function buildCsv(project) {
   const add = (row) => lines.push(row.map(csvEscape).join(","));
   add(["DUBHE智慧安防需求导出"]);
   add([]);
-  add(["项目字段", "内容"]);
-  Object.entries({
-    客户单位: project.project.company,
-    项目名称: project.project.projectName,
-    行业: project.project.industry,
-    地址: project.project.address,
-    联系人: project.project.contactName,
-    联系方式: project.project.contactPhone
-  }).forEach(([key, value]) => add([key, value]));
+  add(["导出信息", "内容"]);
+  add(["配置名称", project.project?.projectName || "智慧安防需求配置"]);
+  add(["导出时间", new Date().toLocaleString("zh-CN", { hour12: false })]);
 
   add([]);
-  add(["项目条件", "内容"]);
+  add(["整体约束", "内容"]);
   Object.entries(project.conditions || {}).forEach(([key, value]) => {
     add([conditionLabels[key] || key, Array.isArray(value) ? value.join("；") : value]);
   });

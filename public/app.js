@@ -5,17 +5,12 @@ const state = {
   cameraGroups: [],
   attachments: [],
   catalog: [],
-  projects: [],
-  ui: {
-    openSections: new Set(["project"])
-  }
+  projects: []
 };
 
 const els = {
-  projectForm: document.querySelector("#projectForm"),
   conditionsForm: document.querySelector("#conditionsForm"),
   cameraGroupList: document.querySelector("#cameraGroupList"),
-  addGroupBtn: document.querySelector("#addGroupBtn"),
   addGroupLargeBtn: document.querySelector("#addGroupLargeBtn"),
   saveBtn: document.querySelector("#saveBtn"),
   newProjectBtn: document.querySelector("#newProjectBtn"),
@@ -28,8 +23,6 @@ const els = {
   attachmentList: document.querySelector("#attachmentList"),
   exportCsvBtn: document.querySelector("#exportCsvBtn"),
   exportJsonBtn: document.querySelector("#exportJsonBtn"),
-  projectStatusText: document.querySelector("#projectStatusText"),
-  conditionsStatusText: document.querySelector("#conditionsStatusText"),
   toast: document.querySelector("#toast")
 };
 
@@ -48,7 +41,7 @@ async function init() {
     } catch {
       localStorage.removeItem("dubhe:lastProjectId");
       window.history.replaceState({}, "", window.location.pathname);
-      state.cameraGroups = [newGroup()];
+      state.cameraGroups = [newGroup({ open: false })];
       renderAll();
     }
   } else {
@@ -60,13 +53,6 @@ async function init() {
 }
 
 function bindEvents() {
-  els.projectForm.addEventListener("input", (event) => {
-    const key = event.target.dataset.project;
-    if (!key) return;
-    state.project[key] = event.target.value;
-    updateCompletion();
-  });
-
   els.conditionsForm.addEventListener("input", (event) => {
     const key = event.target.dataset.condition;
     if (!key) return;
@@ -74,9 +60,6 @@ function bindEvents() {
     updateCompletion();
   });
 
-  els.addGroupBtn.addEventListener("click", () => {
-    addCameraGroup();
-  });
   els.addGroupLargeBtn.addEventListener("click", () => addCameraGroup());
 
   els.cameraGroupList.addEventListener("input", (event) => {
@@ -112,10 +95,6 @@ function bindEvents() {
     if (!actionEl || !els.cameraGroupList.contains(actionEl)) return;
     const action = actionEl.dataset.action;
     const groupId = actionEl.dataset.groupId;
-    if (action === "toggle-section") {
-      toggleSection(event.target.dataset.section);
-      return;
-    }
     if (!action || !groupId) return;
 
     if (action === "toggle-group") toggleGroup(groupId);
@@ -126,14 +105,6 @@ function bindEvents() {
     if (action === "add-all-recommended") addAllRecommended(groupId);
     renderGroups();
     updateCompletion();
-  });
-
-  document.addEventListener("click", (event) => {
-    const actionTarget = event.target.closest("[data-action]");
-    if (!actionTarget) return;
-    const action = actionTarget.dataset.action;
-    if (action !== "toggle-section") return;
-    toggleSection(actionTarget.dataset.section);
   });
 
   els.saveBtn.addEventListener("click", () => saveProject());
@@ -156,20 +127,11 @@ function emptyProject() {
 
 function emptyConditions() {
   return {
-    siteCount: "",
-    totalCameras: "",
-    hasCameraList: "",
     internetPolicy: "",
-    evidencePolicy: "",
     aiPolicy: "",
     compliance: "",
     messageIntegration: "",
     systemIntegration: "",
-    priorityAreas: "",
-    testStream: "",
-    projectMode: "",
-    paymentMode: "",
-    budgetRange: "",
     extraNotes: ""
   };
 }
@@ -183,12 +145,6 @@ function newGroup(seed = {}) {
     vendor: "",
     resolution: "",
     accessMethod: "",
-    existingPlatform: "",
-    videoPlatformName: "",
-    nightCondition: "",
-    imageQuality: "",
-    networkLocation: "",
-    needsNewCamera: "",
     notes: "",
     features: [],
     open: false,
@@ -197,26 +153,10 @@ function newGroup(seed = {}) {
 }
 
 function renderAll() {
-  fillProjectForm();
   fillConditionsForm();
-  renderSections();
   renderGroups();
   renderAttachments();
   updateCompletion();
-}
-
-function renderSections() {
-  document.querySelectorAll("[data-section]").forEach((section) => {
-    const name = section.dataset.section;
-    const isOpen = state.ui.openSections.has(name);
-    section.classList.toggle("is-open", isOpen);
-  });
-}
-
-function fillProjectForm() {
-  for (const input of els.projectForm.querySelectorAll("[data-project]")) {
-    input.value = state.project[input.dataset.project] || "";
-  }
 }
 
 function fillConditionsForm() {
@@ -246,18 +186,22 @@ function groupCard(group, index) {
         <div class="group-title">
           <span class="group-index">${index + 1}</span>
           <div>
-            <strong>${escapeHtml(group.name || "未命名摄像头组")}</strong>
-            <span>${Number(group.cameraCount || 1)} 路摄像头 · 已选 ${featureCount} 项功能 · ${complete ? "已完成" : "待填写"}</span>
+            <strong>${escapeHtml(group.name || `摄像头组 ${index + 1}`)}</strong>
+            <span>${Number(group.cameraCount || 1)} 路摄像头 · 已选 ${featureCount} 项功能 · ${complete ? "已完成" : "待配置"}</span>
           </div>
         </div>
         <div class="group-actions">
-          <button class="small ghost" type="button" data-action="toggle-group" data-group-id="${group.id}">${expanded ? "收起" : "展开填写"}</button>
+          <span class="status-pill ${complete ? "ok" : ""}">${complete ? "已完成" : "待填写"}</span>
+          <button class="small ghost" type="button" data-action="toggle-group" data-group-id="${group.id}">${expanded ? "收起" : "展开配置"}</button>
           <button class="small ghost" type="button" data-action="duplicate" data-group-id="${group.id}">复制</button>
           <button class="small danger" type="button" data-action="delete" data-group-id="${group.id}">删除</button>
         </div>
       </div>
       <div class="group-body">
-        <div class="subheading"><h3>摄像头信息</h3></div>
+        <div class="subheading first">
+          <h3>摄像头信息</h3>
+          <p>数量和接入方式用于后续确认部署与报价。</p>
+        </div>
         <div class="grid-form">
           ${field("组名", group, "name", "例如：仓库摄像头 / 门岗摄像头")}
           ${field("摄像头数量", group, "cameraCount", "1", "number")}
@@ -269,11 +213,16 @@ function groupCard(group, index) {
         </div>
 
         <div class="subheading">
-          <h3>功能选择</h3>
+          <div>
+            <h3>功能选择</h3>
+            <p>同一组摄像头可同时选择多项识别功能。</p>
+          </div>
           <button class="small ghost" type="button" data-action="add-all-recommended" data-group-id="${group.id}">添加全部推荐</button>
         </div>
         ${recommendationBlock(group, recommended)}
-        ${state.catalog.map((category) => featureCategory(category, group, selected)).join("")}
+        <div class="feature-categories">
+          ${state.catalog.map((category) => featureCategory(category, group, selected)).join("")}
+        </div>
         <div class="group-done-row">
           <button class="primary" type="button" data-action="collapse-group" data-group-id="${group.id}">完成本组并收起</button>
         </div>
@@ -312,14 +261,14 @@ function recommendationBlock(group, recommended) {
   if (!recommended.length) {
     return `
       <div class="recommend-box">
-        <strong>推荐项</strong>
-        <span class="muted">填写组名或位置后会出现推荐；推荐项不会自动勾选。</span>
+        <strong>推荐功能</strong>
+        <span>填写组名或位置后，可出现可点击的推荐项；推荐项不会自动勾选。</span>
       </div>
     `;
   }
   return `
-    <div class="recommend-box">
-      <strong>根据组名和位置推荐，点击可添加</strong>
+    <div class="recommend-box has-items">
+      <strong>推荐功能</strong>
       <div class="recommend-list">
         ${recommended.map((item) => `
           <button class="chip recommended" type="button" data-action="add-feature" data-group-id="${group.id}" data-feature-id="${item.id}">
@@ -334,23 +283,23 @@ function recommendationBlock(group, recommended) {
 function featureCategory(category, group, selected) {
   const selectedCount = category.items.filter((item) => selected.has(item.id)).length;
   return `
-    <details class="feature-category" ${selectedCount ? "open" : ""}>
-      <summary>
-        <span>${escapeHtml(category.name)}</span>
-        <small>${selectedCount ? `已选 ${selectedCount} 项` : "展开选择"}</small>
-      </summary>
+    <section class="feature-category">
+      <header>
+        <strong>${escapeHtml(category.name)}</strong>
+        <span>${selectedCount ? `已选 ${selectedCount}` : "可多选"}</span>
+      </header>
       <div class="feature-grid">
         ${category.items.map((item) => {
           const isSelected = selected.has(item.id);
           return `
             <label class="feature-option ${isSelected ? "selected" : ""}" title="${escapeAttr(item.description)}">
               <input type="checkbox" data-group-id="${group.id}" data-feature-id="${item.id}" ${isSelected ? "checked" : ""} />
-              ${escapeHtml(item.name)}
+              <span>${escapeHtml(item.name)}</span>
             </label>
           `;
         }).join("")}
       </div>
-    </details>
+    </section>
   `;
 }
 
@@ -388,7 +337,7 @@ function toggleFeature(groupId, featureId, checked) {
 
 function addFeature(groupId, featureId) {
   const group = findGroup(groupId);
-  if (!group) return;
+  if (!group || !featureId) return;
   if (!group.features.includes(featureId)) group.features.push(featureId);
 }
 
@@ -424,7 +373,7 @@ function collapseGroup(groupId) {
   const group = findGroup(groupId);
   if (!group) return;
   group.open = false;
-  showToast(isGroupComplete(group) ? "本组已完成并收起。" : "已收起，本组还有内容可继续补充。");
+  showToast(isGroupComplete(group) ? "本组已完成。" : "本组已收起，仍可继续补充。");
 }
 
 function duplicateGroup(groupId) {
@@ -452,6 +401,10 @@ function deleteGroup(groupId) {
 }
 
 async function saveProject(silent = false) {
+  state.project = {
+    ...emptyProject(),
+    projectName: deriveDraftName()
+  };
   const response = await fetchJson("/api/projects/save", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -468,22 +421,28 @@ async function saveProject(silent = false) {
   url.searchParams.set("project", state.id);
   window.history.replaceState({}, "", url);
   refreshProjectList();
-  if (!silent) showToast("已保存到本地数据库。");
+  if (!silent) showToast("已保存到本地。");
   return response.project;
+}
+
+function deriveDraftName() {
+  const firstNamedGroup = state.cameraGroups.find((group) => group.name?.trim());
+  if (firstNamedGroup) return `${firstNamedGroup.name.trim()}需求`;
+  return "智慧安防需求配置";
 }
 
 async function loadProject(id) {
   const response = await fetchJson(`/api/projects/${encodeURIComponent(id)}`);
   applyProject(response.project);
   renderAll();
-  showToast("已载入项目草稿。");
+  showToast("已载入草稿。");
 }
 
 function applyProject(project) {
   state.id = project.id;
   state.project = { ...emptyProject(), ...project.project };
   state.conditions = { ...emptyConditions(), ...project.conditions };
-  state.cameraGroups = project.cameraGroups.length ? project.cameraGroups.map((group) => ({ ...group, open: false })) : [newGroup({ open: false })];
+  state.cameraGroups = project.cameraGroups.length ? project.cameraGroups.map((group) => ({ ...newGroup(), ...group, open: false })) : [newGroup({ open: false })];
   state.attachments = project.attachments || [];
   renderAll();
 }
@@ -492,13 +451,12 @@ function newProject() {
   state.id = null;
   state.project = emptyProject();
   state.conditions = emptyConditions();
-  state.ui.openSections = new Set(["project"]);
   state.cameraGroups = [newGroup({ open: false })];
   state.attachments = [];
   localStorage.removeItem("dubhe:lastProjectId");
   window.history.replaceState({}, "", window.location.pathname);
   renderAll();
-  showToast("已创建空白项目。");
+  showToast("已新建空白配置。");
 }
 
 async function uploadFiles() {
@@ -523,13 +481,13 @@ async function uploadFiles() {
 async function exportProject(type) {
   await saveProject(true);
   const issues = validationIssues();
-  if (issues.length && !confirm(`还有 ${issues.length} 项建议补充，仍然导出吗？`)) return;
+  if (issues.length && !confirm(`仍有 ${issues.length} 项未完成，是否继续导出？`)) return;
   window.location.href = `/api/projects/${encodeURIComponent(state.id)}/export.${type}`;
 }
 
 function renderAttachments() {
   if (!state.attachments.length) {
-    els.attachmentList.innerHTML = `<div class="empty-state"><p>暂无附件。必要时可上传现场资料。</p></div>`;
+    els.attachmentList.innerHTML = `<div class="empty-state compact"><p>暂无附件。</p></div>`;
     return;
   }
   els.attachmentList.innerHTML = state.attachments.map((file) => `
@@ -549,8 +507,8 @@ async function refreshProjectList() {
   }
   els.projectList.innerHTML = state.projects.map((project) => `
     <button class="project-item" type="button" data-project-id="${project.id}">
-      <strong>${escapeHtml(project.project_name || project.company || "未命名项目")}</strong>
-      <span>${escapeHtml(project.company || "")} · ${formatDate(project.updated_at)}</span>
+      <strong>${escapeHtml(project.project_name || "智慧安防需求配置")}</strong>
+      <span>${formatDate(project.updated_at)}</span>
     </button>
   `).join("");
   els.projectList.querySelectorAll("[data-project-id]").forEach((button) => {
@@ -560,7 +518,6 @@ async function refreshProjectList() {
 
 function updateCompletion() {
   const checks = [
-    ["项目基本信息", Boolean(state.project.company && state.project.contactPhone)],
     ["至少一个摄像头组", state.cameraGroups.length > 0],
     ["每组填写名称和数量", state.cameraGroups.every((group) => group.name && Number(group.cameraCount) > 0)],
     ["每组选择至少一项功能", state.cameraGroups.every((group) => group.features.length > 0)]
@@ -572,31 +529,16 @@ function updateCompletion() {
   els.completionList.innerHTML = checks.map(([label, ok]) => `
     <li class="${ok ? "ok" : ""}"><span>${ok ? "✓" : "○"}</span>${label}</li>
   `).join("");
-  els.projectStatusText.textContent = checks[0][1] ? "已填写" : "待填写";
-  els.projectStatusText.classList.toggle("ok", checks[0][1]);
-  const hasConditions = Object.values(state.conditions).some((value) => String(value || "").trim());
-  els.conditionsStatusText.textContent = hasConditions ? "已填写" : "可选";
-  els.conditionsStatusText.classList.toggle("ok", hasConditions);
-  renderSections();
 }
 
 function validationIssues() {
   const issues = [];
-  if (!state.project.company) issues.push("客户单位");
-  if (!state.project.contactPhone) issues.push("联系方式");
   state.cameraGroups.forEach((group, index) => {
-    if (!group.name) issues.push(`第${index + 1}组名称`);
-    if (!Number(group.cameraCount)) issues.push(`第${index + 1}组摄像头数量`);
-    if (!group.features.length) issues.push(`第${index + 1}组功能选择`);
+    if (!group.name) issues.push(`第 ${index + 1} 组名称`);
+    if (!Number(group.cameraCount)) issues.push(`第 ${index + 1} 组摄像头数量`);
+    if (!group.features.length) issues.push(`第 ${index + 1} 组功能选择`);
   });
   return issues;
-}
-
-function toggleSection(section) {
-  if (!section) return;
-  if (state.ui.openSections.has(section)) state.ui.openSections.delete(section);
-  else state.ui.openSections.add(section);
-  renderSections();
 }
 
 async function fetchJson(url, options) {
