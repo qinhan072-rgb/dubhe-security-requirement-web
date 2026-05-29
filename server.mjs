@@ -72,6 +72,49 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS resolution_profiles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    compute_multiplier REAL NOT NULL,
+    notes TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS feature_cost_profiles (
+    feature_id TEXT PRIMARY KEY,
+    feature_name TEXT NOT NULL,
+    category_name TEXT NOT NULL,
+    algorithm_family TEXT NOT NULL,
+    workload_level TEXT NOT NULL,
+    base_compute_units_1080p REAL NOT NULL,
+    one_time_dev_cost REAL NOT NULL DEFAULT 0,
+    monthly_algorithm_ops_cost REAL NOT NULL DEFAULT 0,
+    ai_review_policy TEXT NOT NULL DEFAULT 'none',
+    ai_event_rate_per_camera_day REAL NOT NULL DEFAULT 0,
+    notes TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS hardware_profiles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    capacity_units REAL NOT NULL,
+    recommended_max_streams INTEGER NOT NULL,
+    purchase_cost REAL NOT NULL,
+    monthly_cost REAL NOT NULL,
+    cpu TEXT,
+    gpu TEXT,
+    memory TEXT,
+    notes TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS sizing_runs (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    input_snapshot_json TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+  );
 `);
 
 const yesNo = ["是", "否", "待确认"];
@@ -167,6 +210,65 @@ function feature(id, name, description, keywords) {
 
 const featureMap = new Map(featureCatalog.flatMap((category) => category.items.map((item) => [item.id, { ...item, category: category.name }])));
 
+const resolutionDefaults = [
+  ["720P", 0.55, "低分辨率，适合轻量检测或远景预筛"],
+  ["1080P", 1, "默认基准分辨率"],
+  ["2K", 1.8, "中高分辨率，细节识别压力明显增加"],
+  ["4K", 3.2, "高分辨率，建议重点核算解码和GPU余量"],
+  ["混合", 1.5, "多种分辨率混合时的保守估算"],
+  ["不清楚", 1, "客户未确认时按1080P基准估算"]
+];
+
+const hardwareDefaults = [
+  ["edge-mini", "轻量型AI一体机", 24, 16, 18000, 1100, "8核CPU", "入门级GPU/边缘AI卡", "32GB", "小门岗、小仓库、少量算法试点"],
+  ["edge-standard", "标准型AI一体机", 70, 48, 42000, 2600, "16核CPU", "中端GPU", "64GB", "中型厂区或多场景并发"],
+  ["edge-pro", "高性能AI服务器", 160, 120, 98000, 6200, "32核CPU", "高性能GPU", "128GB", "大厂区、算法较多或高分辨率接入"],
+  ["cluster", "集群扩展方案", 9999, 9999, 0, 0, "按项目配置", "多GPU/多节点", "按项目配置", "超过单机容量时拆分节点，需单独设计"]
+];
+
+const featureCostOverrides = {
+  "smoking": { workload: "heavy", base: 2.2, dev: 9000, monthly: 400, ai: "suggested", events: 0.12, family: "行为识别" },
+  "flame": { workload: "heavy", base: 2.0, dev: 8000, monthly: 400, ai: "suggested", events: 0.08, family: "烟火识别" },
+  "smoke": { workload: "heavy", base: 1.8, dev: 8000, monthly: 400, ai: "suggested", events: 0.08, family: "烟火识别" },
+  "helmet": { workload: "medium", base: 1.15, dev: 5000, monthly: 250, ai: "optional", events: 0.18, family: "人员防护识别" },
+  "vest": { workload: "medium", base: 1.1, dev: 5000, monthly: 250, ai: "optional", events: 0.18, family: "人员防护识别" },
+  "other-ppe": { workload: "custom", base: 1.6, dev: 12000, monthly: 500, ai: "suggested", events: 0.12, family: "人员防护识别" },
+  "danger-zone": { workload: "medium", base: 1.0, dev: 7000, monthly: 300, ai: "optional", events: 0.12, family: "区域规则识别" },
+  "height-work": { workload: "medium", base: 1.2, dev: 9000, monthly: 350, ai: "suggested", events: 0.08, family: "区域规则识别" },
+  "person-intrusion": { workload: "medium", base: 0.95, dev: 6000, monthly: 250, ai: "optional", events: 0.1, family: "区域规则识别" },
+  "line-crossing": { workload: "light", base: 0.75, dev: 5000, monthly: 200, ai: "optional", events: 0.08, family: "区域规则识别" },
+  "crowd": { workload: "medium", base: 1.2, dev: 8000, monthly: 300, ai: "optional", events: 0.08, family: "人员行为识别" },
+  "loitering": { workload: "medium", base: 1.1, dev: 7000, monthly: 300, ai: "optional", events: 0.08, family: "人员行为识别" },
+  "fall": { workload: "heavy", base: 1.8, dev: 12000, monthly: 450, ai: "suggested", events: 0.06, family: "人员姿态识别" },
+  "conflict": { workload: "heavy", base: 1.9, dev: 15000, monthly: 500, ai: "suggested", events: 0.04, family: "人员行为识别" },
+  "absence": { workload: "light", base: 0.65, dev: 5000, monthly: 180, ai: "none", events: 0, family: "状态识别" },
+  "sleeping": { workload: "medium", base: 1.0, dev: 8000, monthly: 250, ai: "optional", events: 0.06, family: "人员姿态识别" },
+  "fire-lane-block": { workload: "light", base: 0.7, dev: 4500, monthly: 180, ai: "optional", events: 0.05, family: "区域占用识别" },
+  "exit-block": { workload: "light", base: 0.65, dev: 4500, monthly: 180, ai: "optional", events: 0.05, family: "区域占用识别" },
+  "fire-equipment-block": { workload: "light", base: 0.6, dev: 4500, monthly: 180, ai: "optional", events: 0.04, family: "区域占用识别" },
+  "plate": { workload: "medium", base: 1.0, dev: 6000, monthly: 250, ai: "none", events: 0, family: "车辆识别" },
+  "illegal-parking": { workload: "medium", base: 0.95, dev: 6500, monthly: 260, ai: "optional", events: 0.12, family: "车辆秩序识别" },
+  "vehicle-stay": { workload: "medium", base: 0.9, dev: 6500, monthly: 260, ai: "optional", events: 0.08, family: "车辆秩序识别" },
+  "reverse-driving": { workload: "medium", base: 1.0, dev: 7000, monthly: 280, ai: "optional", events: 0.05, family: "车辆秩序识别" },
+  "mixed-traffic": { workload: "heavy", base: 1.55, dev: 11000, monthly: 420, ai: "suggested", events: 0.1, family: "人车混行识别" },
+  "traffic-count": { workload: "light", base: 0.7, dev: 5000, monthly: 180, ai: "none", events: 0, family: "统计识别" },
+  "bike-parking": { workload: "medium", base: 0.9, dev: 6500, monthly: 260, ai: "optional", events: 0.08, family: "车辆秩序识别" },
+  "cargo-block": { workload: "light", base: 0.65, dev: 4500, monthly: 180, ai: "optional", events: 0.08, family: "区域占用识别" },
+  "cargo-overline": { workload: "medium", base: 0.85, dev: 6000, monthly: 220, ai: "optional", events: 0.08, family: "区域占用识别" },
+  "dock-occupied": { workload: "light", base: 0.7, dev: 5000, monthly: 180, ai: "optional", events: 0.08, family: "区域占用识别" },
+  "forklift-block": { workload: "medium", base: 1.0, dev: 7000, monthly: 260, ai: "optional", events: 0.08, family: "车辆秩序识别" },
+  "shelf-aisle-block": { workload: "light", base: 0.65, dev: 5000, monthly: 180, ai: "optional", events: 0.08, family: "区域占用识别" },
+  "warehouse-restricted": { workload: "medium", base: 0.95, dev: 6000, monthly: 250, ai: "optional", events: 0.08, family: "区域规则识别" },
+  "perimeter-intrusion": { workload: "medium", base: 0.95, dev: 6000, monthly: 250, ai: "optional", events: 0.1, family: "周界识别" },
+  "climbing": { workload: "heavy", base: 1.6, dev: 11000, monthly: 420, ai: "suggested", events: 0.05, family: "周界识别" },
+  "night-intrusion": { workload: "medium", base: 1.2, dev: 8000, monthly: 320, ai: "suggested", events: 0.08, family: "周界识别" },
+  "area-stay": { workload: "medium", base: 0.95, dev: 6500, monthly: 250, ai: "optional", events: 0.08, family: "周界识别" },
+  "trash": { workload: "light", base: 0.6, dev: 4500, monthly: 160, ai: "optional", events: 0.08, family: "环境秩序识别" },
+  "channel-block": { workload: "light", base: 0.65, dev: 4500, monthly: 180, ai: "optional", events: 0.08, family: "区域占用识别" },
+  "water": { workload: "light", base: 0.7, dev: 5500, monthly: 180, ai: "optional", events: 0.05, family: "环境风险识别" },
+  "custom": { workload: "custom", base: 2.5, dev: 20000, monthly: 800, ai: "required", events: 0.1, family: "自定义识别" }
+};
+
 const optionCatalog = {
   yesNo,
   vendors: ["海康", "大华", "宇视", "华为", "其他", "不清楚"],
@@ -194,6 +296,33 @@ const statements = {
   groupsByProject: db.prepare("SELECT * FROM camera_groups WHERE project_id = ? ORDER BY sort_order ASC"),
   attachmentsByProject: db.prepare("SELECT * FROM attachments WHERE project_id = ? ORDER BY created_at DESC"),
   attachmentById: db.prepare("SELECT * FROM attachments WHERE id = ? AND project_id = ?"),
+  resolutionProfiles: db.prepare("SELECT * FROM resolution_profiles ORDER BY compute_multiplier ASC"),
+  featureCostProfiles: db.prepare("SELECT * FROM feature_cost_profiles ORDER BY category_name ASC, feature_name ASC"),
+  featureCostById: db.prepare("SELECT * FROM feature_cost_profiles WHERE feature_id = ?"),
+  hardwareProfiles: db.prepare("SELECT * FROM hardware_profiles ORDER BY capacity_units ASC"),
+  insertResolutionProfile: db.prepare(`
+    INSERT OR IGNORE INTO resolution_profiles (id, name, compute_multiplier, notes)
+    VALUES (?, ?, ?, ?)
+  `),
+  insertFeatureCostProfile: db.prepare(`
+    INSERT OR IGNORE INTO feature_cost_profiles (
+      feature_id, feature_name, category_name, algorithm_family, workload_level,
+      base_compute_units_1080p, one_time_dev_cost, monthly_algorithm_ops_cost,
+      ai_review_policy, ai_event_rate_per_camera_day, notes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+  insertHardwareProfile: db.prepare(`
+    INSERT OR IGNORE INTO hardware_profiles (
+      id, name, capacity_units, recommended_max_streams, purchase_cost, monthly_cost,
+      cpu, gpu, memory, notes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
+  insertSizingRun: db.prepare(`
+    INSERT INTO sizing_runs (id, project_id, input_snapshot_json, result_json, created_at)
+    VALUES (?, ?, ?, ?, ?)
+  `),
   insertProject: db.prepare(`
     INSERT INTO projects (id, company, project_name, industry, address, contact_name, contact_phone, expected_launch, project_status, conditions_json, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -219,8 +348,66 @@ const statements = {
   deleteAttachment: db.prepare("DELETE FROM attachments WHERE id = ? AND project_id = ?")
 };
 
+seedSizingCatalog();
+
 function nowIso() {
   return new Date().toISOString();
+}
+
+function seedSizingCatalog() {
+  db.exec("BEGIN");
+  try {
+    resolutionDefaults.forEach(([name, multiplier, notes]) => {
+      statements.insertResolutionProfile.run(slug(name), name, multiplier, notes);
+    });
+
+    featureCatalog.forEach((category) => {
+      category.items.forEach((item) => {
+        const profile = defaultFeatureCostProfile(category.name, item);
+        statements.insertFeatureCostProfile.run(
+          item.id,
+          item.name,
+          category.name,
+          profile.family,
+          profile.workload,
+          profile.base,
+          profile.dev,
+          profile.monthly,
+          profile.ai,
+          profile.events,
+          profile.notes
+        );
+      });
+    });
+
+    hardwareDefaults.forEach(([id, name, capacityUnits, maxStreams, purchaseCost, monthlyCost, cpu, gpu, memory, notes]) => {
+      statements.insertHardwareProfile.run(id, name, capacityUnits, maxStreams, purchaseCost, monthlyCost, cpu, gpu, memory, notes);
+    });
+
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function defaultFeatureCostProfile(categoryName, item) {
+  const override = featureCostOverrides[item.id];
+  if (override) return { ...override, notes: "默认估算，可按项目经验调整" };
+  return {
+    family: categoryName,
+    workload: "medium",
+    base: 1,
+    dev: 7000,
+    monthly: 250,
+    ai: "optional",
+    events: 0.08,
+    notes: "通用默认估算，建议根据样本和算法实测校准"
+  };
+}
+
+function slug(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/gi, "-");
 }
 
 function parseJson(value, fallback) {
@@ -281,6 +468,174 @@ function getProject(id) {
   const row = statements.projectById.get(id);
   if (!row) return null;
   return projectFromRows(row, statements.groupsByProject.all(id), statements.attachmentsByProject.all(id));
+}
+
+function getSizingCatalog() {
+  return {
+    resolutions: statements.resolutionProfiles.all(),
+    featureCostProfiles: statements.featureCostProfiles.all(),
+    hardwareProfiles: statements.hardwareProfiles.all(),
+    tokenPolicy: "大模型API/token费用不计入固定成本，按实际调用量或服务包单独计费"
+  };
+}
+
+function calculateSizing(project, { saveRun = false } = {}) {
+  const catalog = getSizingCatalog();
+  const resolutionByName = new Map(catalog.resolutions.map((profile) => [profile.name, profile]));
+  const featureProfileById = new Map(catalog.featureCostProfiles.map((profile) => [profile.feature_id, profile]));
+  const hardwareProfiles = catalog.hardwareProfiles;
+  const warnings = [];
+  const uniqueFeatures = new Map();
+  const groupItems = [];
+
+  let totalCameraCount = 0;
+  let totalComputeUnits = 0;
+  let estimatedAiEventsPerDay = 0;
+
+  project.cameraGroups.forEach((group, groupIndex) => {
+    const cameraCount = Number(group.cameraCount || 1);
+    totalCameraCount += cameraCount;
+    const resolutionName = group.resolution || "1080P";
+    const resolution = resolutionByName.get(resolutionName) || resolutionByName.get("不清楚") || { name: resolutionName, compute_multiplier: 1 };
+    if (!group.resolution) warnings.push(`第 ${groupIndex + 1} 组未填写分辨率，暂按1080P估算`);
+    if (!resolutionByName.has(resolutionName)) warnings.push(`第 ${groupIndex + 1} 组分辨率“${resolutionName}”未在画像库中，暂按1倍估算`);
+    if (!group.features.length) warnings.push(`第 ${groupIndex + 1} 组未选择算法功能，硬件估算可能偏低`);
+
+    const featureItems = group.features.map((featureId) => {
+      const featureInfo = featureMap.get(featureId);
+      const featureProfile = featureProfileById.get(featureId) || defaultRuntimeFeatureProfile(featureId, featureInfo);
+      const computeUnits = round2(cameraCount * resolution.compute_multiplier * featureProfile.base_compute_units_1080p);
+      totalComputeUnits += computeUnits;
+
+      if (!uniqueFeatures.has(featureId)) uniqueFeatures.set(featureId, featureProfile);
+      if (featureProfile.ai_review_policy === "suggested" || featureProfile.ai_review_policy === "required") {
+        estimatedAiEventsPerDay += cameraCount * featureProfile.ai_event_rate_per_camera_day;
+      }
+
+      return {
+        featureId,
+        featureName: featureInfo?.name || featureProfile.feature_name || featureId,
+        categoryName: featureInfo?.category || featureProfile.category_name || "",
+        workloadLevel: featureProfile.workload_level,
+        algorithmFamily: featureProfile.algorithm_family,
+        baseComputeUnits1080p: featureProfile.base_compute_units_1080p,
+        computeUnits,
+        aiReviewPolicy: featureProfile.ai_review_policy,
+        estimatedAiEventsPerDay: round2(cameraCount * featureProfile.ai_event_rate_per_camera_day)
+      };
+    });
+
+    groupItems.push({
+      groupId: group.id,
+      groupName: group.name || `摄像头组 ${groupIndex + 1}`,
+      cameraCount,
+      resolution: resolution.name,
+      resolutionMultiplier: resolution.compute_multiplier,
+      groupComputeUnits: round2(featureItems.reduce((sum, item) => sum + item.computeUnits, 0)),
+      features: featureItems
+    });
+  });
+
+  const oneTimeDevCost = [...uniqueFeatures.values()].reduce((sum, profile) => sum + Number(profile.one_time_dev_cost || 0), 0);
+  const monthlyAlgorithmOpsCost = [...uniqueFeatures.values()].reduce((sum, profile) => sum + Number(profile.monthly_algorithm_ops_cost || 0), 0);
+  const requiredCapacity = round2(totalComputeUnits * 1.25);
+  let recommendedHardware = hardwareProfiles.find((hardware) => Number(hardware.capacity_units) >= requiredCapacity && Number(hardware.recommended_max_streams) >= totalCameraCount) || hardwareProfiles[hardwareProfiles.length - 1];
+  if (recommendedHardware?.id === "cluster") {
+    const nodeProfile = [...hardwareProfiles].reverse().find((hardware) => hardware.id !== "cluster") || recommendedHardware;
+    const estimatedNodeCount = Math.max(1, Math.ceil(requiredCapacity / Number(nodeProfile.capacity_units || 1)));
+    recommendedHardware = {
+      ...recommendedHardware,
+      nodeProfileId: nodeProfile.id,
+      nodeProfileName: nodeProfile.name,
+      estimatedNodeCount,
+      purchase_cost: estimatedNodeCount * Number(nodeProfile.purchase_cost || 0),
+      monthly_cost: estimatedNodeCount * Number(nodeProfile.monthly_cost || 0),
+      notes: `超过单机容量，按 ${estimatedNodeCount} 台“${nodeProfile.name}”估算，最终以现场部署拓扑为准`
+    };
+    warnings.push("当前需求超过单台标准硬件画像，已按多节点集群估算硬件成本");
+  }
+
+  const result = {
+    id: randomUUID(),
+    projectId: project.id,
+    calculatedAt: nowIso(),
+    assumptions: {
+      safetyFactor: 1.25,
+      tokenCostPolicy: "大模型API/token费用按实际调用量或服务包单独计费，不纳入固定硬件与研发成本",
+      devCostPolicy: "研发/适配成本按唯一算法功能计一次，后续可按客户定制规则调整",
+      hardwareCostPolicy: "硬件同时给出买断成本和月付成本，推荐档位需满足总算力与总路数"
+    },
+    totals: {
+      cameraGroups: project.cameraGroups.length,
+      cameraCount: totalCameraCount,
+      selectedFeatureCount: project.cameraGroups.reduce((sum, group) => sum + group.features.length, 0),
+      uniqueFeatureCount: uniqueFeatures.size,
+      computeUnits: round2(totalComputeUnits),
+      requiredCapacityUnits: requiredCapacity,
+      estimatedAiEventsPerDay: round2(estimatedAiEventsPerDay),
+      estimatedAiEventsPerMonth: round2(estimatedAiEventsPerDay * 30)
+    },
+    hardware: {
+      recommended: recommendedHardware,
+      alternatives: hardwareProfiles.map((hardware) => ({
+        ...hardware,
+        fitsCapacity: Number(hardware.capacity_units) >= requiredCapacity,
+        fitsStreams: Number(hardware.recommended_max_streams) >= totalCameraCount
+      }))
+    },
+    fixedCosts: {
+      oneTimeDevCost: roundMoney(oneTimeDevCost),
+      monthlyAlgorithmOpsCost: roundMoney(monthlyAlgorithmOpsCost),
+      hardwarePurchaseCost: roundMoney(recommendedHardware?.purchase_cost || 0),
+      hardwareMonthlyCost: roundMoney(recommendedHardware?.monthly_cost || 0),
+      fixedOneTimeCostIfPurchase: roundMoney(oneTimeDevCost + Number(recommendedHardware?.purchase_cost || 0)),
+      fixedMonthlyCostIfRental: roundMoney(monthlyAlgorithmOpsCost + Number(recommendedHardware?.monthly_cost || 0))
+    },
+    groupItems,
+    uniqueFeatureCosts: [...uniqueFeatures.values()].map((profile) => ({
+      featureId: profile.feature_id,
+      featureName: profile.feature_name,
+      categoryName: profile.category_name,
+      workloadLevel: profile.workload_level,
+      oneTimeDevCost: profile.one_time_dev_cost,
+      monthlyAlgorithmOpsCost: profile.monthly_algorithm_ops_cost,
+      aiReviewPolicy: profile.ai_review_policy
+    })),
+    warnings
+  };
+
+  if (saveRun) {
+    statements.insertSizingRun.run(result.id, project.id, JSON.stringify(project), JSON.stringify(result), result.calculatedAt);
+  }
+
+  return result;
+}
+
+function defaultRuntimeFeatureProfile(featureId, featureInfo) {
+  const fallback = defaultFeatureCostProfile(featureInfo?.category || "未分类", {
+    id: featureId,
+    name: featureInfo?.name || featureId
+  });
+  return {
+    feature_id: featureId,
+    feature_name: featureInfo?.name || featureId,
+    category_name: featureInfo?.category || "未分类",
+    algorithm_family: fallback.family,
+    workload_level: fallback.workload,
+    base_compute_units_1080p: fallback.base,
+    one_time_dev_cost: fallback.dev,
+    monthly_algorithm_ops_cost: fallback.monthly,
+    ai_review_policy: fallback.ai,
+    ai_event_rate_per_camera_day: fallback.events
+  };
+}
+
+function round2(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0));
 }
 
 function saveProject(payload) {
@@ -646,6 +1001,10 @@ async function router(req, res) {
       return sendJson(res, 200, { featureCatalog, options: optionCatalog });
     }
 
+    if (req.method === "GET" && pathname === "/api/sizing/catalog") {
+      return sendJson(res, 200, getSizingCatalog());
+    }
+
     if (req.method === "GET" && pathname === "/api/projects") {
       return sendJson(res, 200, { projects: statements.projectList.all() });
     }
@@ -659,6 +1018,13 @@ async function router(req, res) {
     if (attachmentMatch && req.method === "DELETE") {
       const [, projectId, attachmentId] = attachmentMatch;
       return handleDeleteAttachment(res, projectId, attachmentId);
+    }
+
+    const sizingMatch = pathname.match(/^\/api\/projects\/([^/]+)\/sizing$/);
+    if (sizingMatch && (req.method === "POST" || req.method === "GET")) {
+      const project = getProject(sizingMatch[1]);
+      if (!project) return sendJson(res, 404, { error: "项目不存在" });
+      return sendJson(res, 200, { sizing: calculateSizing(project, { saveRun: req.method === "POST" }) });
     }
 
     const projectMatch = pathname.match(/^\/api\/projects\/([^/]+)(?:\/([^/]+))?$/);

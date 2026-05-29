@@ -13,6 +13,7 @@
 - 附件上传、预览、删除，限制类型和单文件 20MB
 - 本地 SQLite 保存
 - 顶部统一导出 CSV / JSON / 客户确认版 Word
+- 内部成本/选型引擎：按摄像头组、分辨率和识别功能估算固定研发成本、硬件档位和预计 AI 调用量
 
 ## 运行
 
@@ -34,6 +35,29 @@ http://localhost:4173
 - 上传附件：`uploads/`
 
 这些本地数据默认不会提交到 Git。
+
+## 成本与选型接口
+
+当前版本已内置一版可调整的成本画像库：
+
+- `resolution_profiles`：分辨率算力倍率
+- `feature_cost_profiles`：算法功能的算力、研发/适配成本、月度运维成本、AI复核策略
+- `hardware_profiles`：硬件档位、容量、买断成本和月付成本
+- `sizing_runs`：每次选型计算结果快照
+
+接口：
+
+```text
+GET  /api/sizing/catalog
+GET  /api/projects/:id/sizing
+POST /api/projects/:id/sizing
+```
+
+说明：
+
+- token/API费用不并入固定报价，只估算预计 AI 事件量，后续可按用量或服务包计费。
+- 研发/适配成本按唯一算法功能计一次。
+- 硬件推荐同时考虑总算力单位和总摄像头路数，并预留 25% 安全余量。
 
 ## 说明
 
