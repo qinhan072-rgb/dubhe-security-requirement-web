@@ -1188,7 +1188,7 @@ async function exportProject(type) {
     const issueText = issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n");
     if (!confirm(t("exportIncompleteConfirm", { issues: issueText }))) return;
   }
-  window.location.href = `/api/projects/${encodeURIComponent(state.id)}/export.${type}`;
+  window.location.href = apiUrl(`/api/projects/${encodeURIComponent(state.id)}/export.${type}`);
 }
 
 function renderAttachments() {
@@ -1199,11 +1199,11 @@ function renderAttachments() {
   els.attachmentList.innerHTML = state.attachments.map((file) => `
     <div class="attachment-item">
       <div class="attachment-main">
-        <a href="${file.url}" target="_blank" rel="noreferrer">${escapeHtml(file.name)}</a>
+        <a href="${apiUrl(file.url)}" target="_blank" rel="noreferrer">${escapeHtml(file.name)}</a>
         <span>${formatSize(file.size)} · ${escapeHtml(file.mimeType || "")} · ${formatDate(file.createdAt)}</span>
       </div>
       <div class="attachment-actions">
-        <a class="small-link" href="${file.url}" target="_blank" rel="noreferrer">${t("preview")}</a>
+        <a class="small-link" href="${apiUrl(file.url)}" target="_blank" rel="noreferrer">${t("preview")}</a>
         <button class="small danger" type="button" data-action="delete-attachment" data-attachment-id="${file.id}">${t("delete")}</button>
       </div>
     </div>
@@ -1298,7 +1298,7 @@ function validationIssues() {
 }
 
 async function fetchJson(url, options) {
-  const response = await fetch(url, options);
+  const response = await fetch(apiUrl(url), options);
   if (!response.ok) {
     const body = await response.text();
     if (response.status === 401 && /Vercel Authentication|Authentication Required/i.test(body)) {
@@ -1307,6 +1307,13 @@ async function fetchJson(url, options) {
     throw new Error(cleanErrorBody(body) || t("requestFailed", { status: response.status }));
   }
   return response.json();
+}
+
+function apiUrl(url) {
+  const value = String(url || "");
+  if (!value.startsWith("/api/")) return value;
+  if (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)) return value;
+  return `/api?path=${encodeURIComponent(value.slice("/api/".length))}`;
 }
 
 function cleanErrorBody(body) {

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { featureCatalog, featureMap, conditionLabels } from "../lib/catalog.mjs";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_URL = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "security-requirements";
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
@@ -70,6 +70,13 @@ function ensureSupabaseEnv() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("缺少 SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY 环境变量");
   }
+}
+
+function normalizeSupabaseUrl(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\/(?:rest|storage)\/v1\/?$/i, "")
+    .replace(/\/+$/, "");
 }
 
 async function saveProject(payload) {
