@@ -4,6 +4,8 @@ const LANGUAGE_KEY = "securityRequirement:language";
 const state = {
   id: null,
   language: localStorage.getItem(LANGUAGE_KEY) || "zh",
+  dirty: false,
+  saving: false,
   project: emptyProject(),
   conditions: emptyConditions(),
   cameraGroups: [],
@@ -13,9 +15,12 @@ const state = {
 };
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+const AUTO_SAVE_DELAY_MS = 8000;
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
   "jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "zip", "rar"
 ]);
+let autoSaveTimer;
+let saveButtonResetTimer;
 
 const I18N = {
   zh: {
@@ -33,6 +38,9 @@ const I18N = {
     exportJson: "JSON 文件",
     exportWord: "客户确认版 Word",
     save: "保存",
+    saveDirty: "待保存",
+    saving: "保存中",
+    savedShort: "已保存",
     progressTitle: "填写进度",
     progressReady: "准备中",
     pathTitle: "填写路径",
@@ -112,12 +120,17 @@ const I18N = {
     noDraft: "暂无本地草稿",
     preview: "预览",
     noAttachment: "暂无附件。",
+    autoSaved: "已自动保存。",
+    autoSaveFailed: "自动保存失败：{message}",
     addedRecommended: "已添加 {count} 项当前推荐。",
     noRecommendedToAdd: "当前没有可添加的推荐项。",
     groupDone: "本组已完成。",
     groupCollapsed: "本组已收起，仍可继续补充。",
     keepOneGroup: "至少保留一个摄像头组。",
     saved: "已保存到本地。",
+    saveFailed: "保存失败：{message}",
+    cloudDraftUnavailable: "暂时无法读取云端草稿。",
+    vercelAuthRequired: "当前链接被 Vercel 访问保护拦截，API 需要登录。请关闭 Deployment Protection，或使用正式生产域名。",
     blankCreated: "已新建空白调研。",
     loadedDraft: "已载入草稿。",
     chooseAttachment: "请先选择附件。",
@@ -132,6 +145,7 @@ const I18N = {
     defaultDraftName: "智慧安防需求调研",
     progressText: "{complete}/{total} 项完成",
     checkCompany: "公司基础信息",
+    checkConditions: "整体约束",
     checkGroups: "当前 {count} 个摄像头组",
     checkCompleteGroups: "{complete}/{total} 组已完成",
     checkInfoGroups: "{complete}/{total} 组已填写名称和数量",
@@ -139,6 +153,8 @@ const I18N = {
     issueCompany: "公司名称",
     issueIndustry: "单位性质",
     issueContact: "联系方式",
+    issueInternetPolicy: "系统网络环境",
+    issueAiPolicy: "AI方式限制",
     issueGroupName: "第 {index} 组名称",
     issueGroupCount: "第 {index} 组摄像头数量",
     issueGroupFeature: "第 {index} 组功能选择"
@@ -158,6 +174,9 @@ const I18N = {
     exportJson: "JSON ファイル",
     exportWord: "確認用 Word",
     save: "保存",
+    saveDirty: "未保存",
+    saving: "保存中",
+    savedShort: "保存済み",
     progressTitle: "入力進捗",
     progressReady: "準備中",
     pathTitle: "入力手順",
@@ -237,12 +256,17 @@ const I18N = {
     noDraft: "下書きはありません",
     preview: "プレビュー",
     noAttachment: "添付資料はありません。",
+    autoSaved: "自動保存しました。",
+    autoSaveFailed: "自動保存に失敗しました：{message}",
     addedRecommended: "現在のおすすめを {count} 件追加しました。",
     noRecommendedToAdd: "追加できるおすすめはありません。",
     groupDone: "このグループは完了しました。",
     groupCollapsed: "このグループを閉じました。あとで追加入力できます。",
     keepOneGroup: "少なくとも1つのカメラグループを残してください。",
     saved: "ローカルに保存しました。",
+    saveFailed: "保存に失敗しました：{message}",
+    cloudDraftUnavailable: "クラウド下書きを読み込めません。",
+    vercelAuthRequired: "このリンクは Vercel のアクセス保護により API がログイン必須です。Deployment Protection を無効にするか、本番ドメインを使用してください。",
     blankCreated: "空の調査を新規作成しました。",
     loadedDraft: "下書きを読み込みました。",
     chooseAttachment: "先に添付ファイルを選択してください。",
@@ -257,6 +281,7 @@ const I18N = {
     defaultDraftName: "スマート保安ニーズ調査",
     progressText: "{complete}/{total} 完了",
     checkCompany: "会社基本情報",
+    checkConditions: "全体条件",
     checkGroups: "現在 {count} 個のカメラグループ",
     checkCompleteGroups: "{complete}/{total} グループ完了",
     checkInfoGroups: "{complete}/{total} グループが名称と台数を入力済み",
@@ -264,6 +289,8 @@ const I18N = {
     issueCompany: "会社名",
     issueIndustry: "業種・施設種別",
     issueContact: "連絡先",
+    issueInternetPolicy: "ネットワーク環境",
+    issueAiPolicy: "AI 利用条件",
     issueGroupName: "第 {index} グループ名",
     issueGroupCount: "第 {index} グループのカメラ台数",
     issueGroupFeature: "第 {index} グループの機能選択"
@@ -483,7 +510,7 @@ async function init() {
     renderAll();
   }
 
-  refreshProjectList();
+  safeRefreshProjectList();
 }
 
 async function loadCatalog() {
@@ -500,7 +527,7 @@ function bindEvents() {
     localStorage.setItem(LANGUAGE_KEY, state.language);
     applyLanguage();
     renderAll();
-    refreshProjectList();
+    safeRefreshProjectList();
   });
 
   els.startSurveyBtn.addEventListener("click", () => enterSurvey());
@@ -509,28 +536,28 @@ function bindEvents() {
     const key = event.target.dataset.project;
     if (!key) return;
     state.project[key] = event.target.value;
-    updateCompletion();
+    markDirty();
   });
 
   els.companyForm.addEventListener("change", (event) => {
     const key = event.target.dataset.project;
     if (!key) return;
     state.project[key] = event.target.value;
-    updateCompletion();
+    markDirty();
   });
 
   els.conditionsForm.addEventListener("input", (event) => {
     const key = event.target.dataset.condition;
     if (!key) return;
     state.conditions[key] = event.target.value;
-    updateCompletion();
+    markDirty();
   });
 
   els.conditionsForm.addEventListener("change", (event) => {
     const key = event.target.dataset.condition;
     if (!key) return;
     state.conditions[key] = event.target.value;
-    updateCompletion();
+    markDirty();
   });
 
   els.addGroupLargeBtn.addEventListener("click", () => addCameraGroup());
@@ -543,7 +570,7 @@ function bindEvents() {
     if (!group) return;
     group[key] = event.target.value;
     updateGroupDynamicUi(group);
-    updateCompletion();
+    markDirty();
   });
 
   els.cameraGroupList.addEventListener("change", (event) => {
@@ -553,7 +580,7 @@ function bindEvents() {
       const group = findGroup(groupId);
       if (group) group[field] = event.target.value;
       renderGroups();
-      updateCompletion();
+      markDirty();
       return;
     }
 
@@ -561,7 +588,7 @@ function bindEvents() {
     if (!groupId || !featureId) return;
     toggleFeature(groupId, featureId, event.target.checked);
     renderGroups();
-    updateCompletion();
+    markDirty();
   });
 
   els.cameraGroupList.addEventListener("click", (event) => {
@@ -571,20 +598,30 @@ function bindEvents() {
     const groupId = actionEl.dataset.groupId;
     if (!action || !groupId) return;
 
+    let dataChanged = false;
     if (action === "toggle-group") toggleGroup(groupId);
     if (action === "collapse-group") collapseGroup(groupId);
-    if (action === "duplicate") duplicateGroup(groupId);
-    if (action === "delete") deleteGroup(groupId);
-    if (action === "add-feature") addFeature(groupId, actionEl.dataset.featureId);
+    if (action === "duplicate") {
+      duplicateGroup(groupId);
+      dataChanged = true;
+    }
+    if (action === "delete") {
+      dataChanged = deleteGroup(groupId);
+    }
+    if (action === "add-feature") {
+      dataChanged = addFeature(groupId, actionEl.dataset.featureId);
+    }
     if (action === "add-all-recommended") {
       const addedCount = addAllRecommended(groupId);
+      dataChanged = addedCount > 0;
       showToast(addedCount ? t("addedRecommended", { count: addedCount }) : t("noRecommendedToAdd"));
     }
     renderGroups();
-    updateCompletion();
+    if (dataChanged) markDirty();
+    else updateCompletion();
   });
 
-  els.saveBtn.addEventListener("click", () => saveProject());
+  els.saveBtn.addEventListener("click", () => saveProject(false).catch(() => {}));
   els.newProjectBtn.addEventListener("click", newProject);
   els.uploadBtn.addEventListener("click", uploadFiles);
   els.exportMenuBtn.addEventListener("click", () => toggleExportMenu());
@@ -618,6 +655,7 @@ function applyLanguage() {
     node.placeholder = t(node.dataset.i18nPlaceholder);
   }
   translateStaticOptions();
+  if (els.saveBtn && !state.saving) setSaveButtonState(state.dirty ? "dirty" : "idle");
 }
 
 function translateStaticOptions() {
@@ -713,6 +751,45 @@ function renderAll() {
   renderGroups();
   renderAttachments();
   updateCompletion();
+}
+
+function markDirty() {
+  state.dirty = true;
+  updateCompletion();
+  setSaveButtonState("dirty");
+  queueAutoSave();
+}
+
+function queueAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    autoSave().catch(() => {});
+  }, AUTO_SAVE_DELAY_MS);
+}
+
+async function autoSave() {
+  if (!state.dirty || state.saving) return;
+  await saveProject(true, { auto: true });
+}
+
+function setSaveButtonState(mode) {
+  clearTimeout(saveButtonResetTimer);
+  if (mode === "saving") {
+    els.saveBtn.textContent = t("saving");
+    els.saveBtn.disabled = true;
+    return;
+  }
+  els.saveBtn.disabled = false;
+  if (mode === "dirty") {
+    els.saveBtn.textContent = t("saveDirty");
+    return;
+  }
+  if (mode === "saved") {
+    els.saveBtn.textContent = t("savedShort");
+    saveButtonResetTimer = setTimeout(() => setSaveButtonState(state.dirty ? "dirty" : "idle"), 1800);
+    return;
+  }
+  els.saveBtn.textContent = t("save");
 }
 
 function fillCompanyForm() {
@@ -919,8 +996,9 @@ function toggleFeature(groupId, featureId, checked) {
 
 function addFeature(groupId, featureId) {
   const group = findGroup(groupId);
-  if (!group || !featureId) return;
-  if (!group.features.includes(featureId)) group.features.push(featureId);
+  if (!group || !featureId || group.features.includes(featureId)) return false;
+  group.features.push(featureId);
+  return true;
 }
 
 function addAllRecommended(groupId) {
@@ -941,7 +1019,7 @@ function addCameraGroup() {
   });
   state.cameraGroups.push(newGroup({ open: true }));
   renderGroups();
-  updateCompletion();
+  markDirty();
   requestAnimationFrame(() => {
     document.querySelector(".group-card.is-open")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
@@ -983,35 +1061,52 @@ function duplicateGroup(groupId) {
 function deleteGroup(groupId) {
   if (state.cameraGroups.length === 1) {
     showToast(t("keepOneGroup"));
-    return;
+    return false;
   }
   state.cameraGroups = state.cameraGroups.filter((group) => group.id !== groupId);
+  return true;
 }
 
-async function saveProject(silent = false) {
-  state.project = {
-    ...emptyProject(),
-    ...state.project,
-    projectName: deriveDraftName()
-  };
-  const response = await fetchJson("/api/projects/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: state.id,
-      project: state.project,
-      conditions: state.conditions,
-      cameraGroups: state.cameraGroups
-    })
-  });
-  applyProject(response.project);
-  localStorage.setItem(LAST_PROJECT_KEY, state.id);
-  const url = new URL(window.location.href);
-  url.searchParams.set("project", state.id);
-  window.history.replaceState({}, "", url);
-  refreshProjectList();
-  if (!silent) showToast(t("saved"));
-  return response.project;
+async function saveProject(silent = false, options = {}) {
+  if (state.saving) return null;
+  clearTimeout(autoSaveTimer);
+  state.saving = true;
+  setSaveButtonState("saving");
+  try {
+    state.project = {
+      ...emptyProject(),
+      ...state.project,
+      projectName: deriveDraftName()
+    };
+    const response = await fetchJson("/api/projects/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: state.id,
+        project: state.project,
+        conditions: state.conditions,
+        cameraGroups: state.cameraGroups
+      })
+    });
+    applyProject(response.project);
+    state.dirty = false;
+    localStorage.setItem(LAST_PROJECT_KEY, state.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", state.id);
+    window.history.replaceState({}, "", url);
+    safeRefreshProjectList();
+    setSaveButtonState("saved");
+    if (!silent) showToast(t("saved"));
+    if (options.auto) showToast(t("autoSaved"));
+    return response.project;
+  } catch (error) {
+    const message = errorMessage(error);
+    setSaveButtonState("dirty");
+    showToast(options.auto ? t("autoSaveFailed", { message }) : t("saveFailed", { message }));
+    throw error;
+  } finally {
+    state.saving = false;
+  }
 }
 
 function deriveDraftName() {
@@ -1034,6 +1129,7 @@ function applyProject(project) {
   state.conditions = { ...emptyConditions(), ...project.conditions };
   state.cameraGroups = project.cameraGroups.length ? project.cameraGroups.map((group) => ({ ...newGroup(), ...group, open: false })) : [newGroup({ open: false })];
   state.attachments = project.attachments || [];
+  state.dirty = false;
   renderAll();
 }
 
@@ -1043,6 +1139,7 @@ function newProject() {
   state.conditions = emptyConditions();
   state.cameraGroups = [newGroup({ open: false })];
   state.attachments = [];
+  state.dirty = false;
   localStorage.removeItem(LAST_PROJECT_KEY);
   window.history.replaceState({}, "", window.location.pathname);
   document.body.classList.remove("welcome-active");
@@ -1144,17 +1241,27 @@ async function refreshProjectList() {
   });
 }
 
+async function safeRefreshProjectList() {
+  try {
+    await refreshProjectList();
+  } catch {
+    els.projectList.innerHTML = `<span class="muted">${t("cloudDraftUnavailable")}</span>`;
+  }
+}
+
 function updateCompletion() {
   const totalGroups = state.cameraGroups.length;
   const completeGroups = state.cameraGroups.filter(isGroupComplete).length;
   const companyComplete = isCompanyComplete();
-  const totalUnits = totalGroups + 1;
-  const completeUnits = completeGroups + (companyComplete ? 1 : 0);
+  const conditionsComplete = isConditionsComplete();
+  const totalUnits = totalGroups + 2;
+  const completeUnits = completeGroups + (companyComplete ? 1 : 0) + (conditionsComplete ? 1 : 0);
   const percent = totalUnits ? Math.round((completeUnits / totalUnits) * 100) : 0;
   const groupsWithInfo = state.cameraGroups.filter((group) => group.name && Number(group.cameraCount) > 0).length;
   const groupsWithFeatures = state.cameraGroups.filter((group) => group.features.length > 0).length;
   const checks = [
     [t("checkCompany"), companyComplete],
+    [t("checkConditions"), conditionsComplete],
     [t("checkGroups", { count: totalGroups }), totalGroups > 0],
     [t("checkCompleteGroups", { complete: completeGroups, total: totalGroups }), totalGroups > 0 && completeGroups === totalGroups],
     [t("checkInfoGroups", { complete: groupsWithInfo, total: totalGroups }), totalGroups > 0 && groupsWithInfo === totalGroups],
@@ -1171,11 +1278,17 @@ function isCompanyComplete() {
   return Boolean(state.project.company?.trim() && state.project.industry?.trim() && state.project.contactPhone?.trim());
 }
 
+function isConditionsComplete() {
+  return Boolean(state.conditions.internetPolicy?.trim() && state.conditions.aiPolicy?.trim());
+}
+
 function validationIssues() {
   const issues = [];
   if (!state.project.company?.trim()) issues.push(t("issueCompany"));
   if (!state.project.industry?.trim()) issues.push(t("issueIndustry"));
   if (!state.project.contactPhone?.trim()) issues.push(t("issueContact"));
+  if (!state.conditions.internetPolicy?.trim()) issues.push(t("issueInternetPolicy"));
+  if (!state.conditions.aiPolicy?.trim()) issues.push(t("issueAiPolicy"));
   state.cameraGroups.forEach((group, index) => {
     if (!group.name) issues.push(t("issueGroupName", { index: index + 1 }));
     if (!Number(group.cameraCount)) issues.push(t("issueGroupCount", { index: index + 1 }));
@@ -1188,9 +1301,22 @@ async function fetchJson(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(body || t("requestFailed", { status: response.status }));
+    if (response.status === 401 && /Vercel Authentication|Authentication Required/i.test(body)) {
+      throw new Error(t("vercelAuthRequired"));
+    }
+    throw new Error(cleanErrorBody(body) || t("requestFailed", { status: response.status }));
   }
   return response.json();
+}
+
+function cleanErrorBody(body) {
+  const text = String(body || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.slice(0, 180);
+}
+
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error || "");
 }
 
 function escapeHtml(value) {
