@@ -33,6 +33,20 @@ body {
   color: var(--ink);
 }
 
+body.welcome-active {
+  min-height: 100vh;
+  overflow: auto;
+}
+
+body.welcome-active .topbar,
+body.welcome-active .layout {
+  display: none;
+}
+
+body:not(.welcome-active) .welcome-screen {
+  display: none;
+}
+
 button,
 input,
 select,
@@ -196,11 +210,165 @@ button.small {
   font-size: 13px;
 }
 
+.language-switch {
+  position: fixed;
+  left: 32px;
+  bottom: 24px;
+  z-index: 70;
+  min-height: 36px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 12px 26px rgba(7, 24, 43, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.welcome-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 48px 24px;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(31, 102, 229, 0.10), transparent 34%),
+    radial-gradient(circle at 80% 82%, rgba(0, 169, 143, 0.10), transparent 32%),
+    linear-gradient(180deg, #f9fbfc 0, #edf4f2 100%);
+}
+
+.welcome-card {
+  width: min(880px, 100%);
+  padding: clamp(34px, 6vw, 72px);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(217, 227, 234, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 26px 70px rgba(7, 24, 43, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.welcome-card h1 {
+  max-width: 780px;
+  margin: 0;
+  font-size: clamp(36px, 5.2vw, 64px);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.welcome-card p {
+  max-width: 680px;
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+.welcome-start {
+  min-width: 132px;
+  min-height: 48px;
+  margin-top: 34px;
+  font-size: 18px;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
   gap: 22px;
   padding: 22px 32px 46px;
+}
+
+.welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
+  gap: 24px;
+  align-items: stretch;
+  padding: 34px 32px 10px;
+}
+
+.welcome-copy,
+.welcome-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.welcome-copy {
+  display: grid;
+  align-content: center;
+  min-height: 300px;
+  padding: 38px 42px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 16px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--green);
+  background: #e8f7f2;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.welcome h2 {
+  max-width: 780px;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.welcome p {
+  max-width: 760px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+
+.welcome-actions a {
+  color: var(--blue);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.welcome-panel {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: 28px;
+}
+
+.welcome-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfe;
+}
+
+.welcome-step strong {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--ink);
+  font-size: 15px;
+}
+
+.welcome-step span {
+  font-weight: 900;
 }
 
 .sidebar {
@@ -596,7 +764,7 @@ textarea:focus {
 }
 
 .chip.recommended span::before {
-  content: "推荐";
+  content: "";
   margin-right: 6px;
   color: var(--teal);
   font-size: 12px;
@@ -836,6 +1004,11 @@ textarea:focus {
     padding: 16px;
   }
 
+  .welcome {
+    grid-template-columns: 1fr;
+    padding: 18px 16px 0;
+  }
+
   .sidebar {
     position: static;
   }
@@ -850,6 +1023,16 @@ textarea:focus {
 @media (max-width: 720px) {
   body {
     padding-bottom: 78px;
+  }
+
+  body.welcome-active {
+    padding-bottom: 0;
+  }
+
+  .language-switch {
+    right: 16px;
+    bottom: 16px;
+    left: auto;
   }
 
   h1 {
@@ -914,7 +1097,7 @@ textarea:focus {
   }
 
   .side-nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .side-nav a {
@@ -938,6 +1121,19 @@ textarea:focus {
 
   .card {
     padding: 18px;
+  }
+
+  .welcome-copy {
+    min-height: 0;
+    padding: 26px 22px;
+  }
+
+  .welcome h2 {
+    font-size: 26px;
+  }
+
+  .welcome-panel {
+    padding: 16px;
   }
 
   .attachment-item,

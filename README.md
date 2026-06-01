@@ -1,4 +1,4 @@
-# DUBHE 智慧安防需求配置
+# 智慧安防需求调研
 
 一个用于客户按摄像头组配置智慧安防识别需求的本地 Web 原型。
 
@@ -14,6 +14,8 @@
 - 本地 SQLite 保存
 - 顶部统一导出 CSV / JSON / 客户确认版 Word
 - 内部成本/选型引擎：按摄像头组、分辨率和识别功能估算固定研发成本、硬件档位和预计 AI 调用量
+- 欢迎页与公司基础信息填写
+- 已准备 Supabase + Vercel 线上部署结构
 
 ## 运行
 
@@ -62,3 +64,21 @@ POST /api/projects/:id/sizing
 ## 说明
 
 当前版本是本地原型，不包含登录、外网权限控制、HTTPS 和审计日志。正式给客户公网填写前，应增加客户身份登记/登录校验、附件访问权限、上传病毒扫描、操作日志和数据留存策略。
+
+## 线上部署准备
+
+已补充：
+
+- `api/[...path].mjs`：Vercel API Function，线上读写 Supabase。
+- `supabase/schema.sql`：Supabase Postgres 表和 Storage bucket。
+- `vercel.json`：Vercel Function 配置。
+- `.env.example`：线上环境变量示例。
+- `docs/deploy-supabase-vercel.md`：部署步骤。
+
+线上部署需要在 Vercel 设置：
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET
+```

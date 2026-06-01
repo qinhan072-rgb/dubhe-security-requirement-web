@@ -1,5 +1,9 @@
+const LAST_PROJECT_KEY = "securityRequirement:lastProjectId";
+const LANGUAGE_KEY = "securityRequirement:language";
+
 const state = {
   id: null,
+  language: localStorage.getItem(LANGUAGE_KEY) || "zh",
   project: emptyProject(),
   conditions: emptyConditions(),
   cameraGroups: [],
@@ -13,8 +17,429 @@ const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
   "jpg", "jpeg", "png", "webp", "gif", "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "zip", "rar"
 ]);
 
+const I18N = {
+  zh: {
+    metaTitle: "智慧安防需求调研",
+    langButton: "日本語",
+    brandLabel: "需求调研",
+    appTitle: "智慧安防需求调研",
+    welcomeKicker: "智慧安防需求调研",
+    welcomeTitle: "欢迎填写智慧安防需求调研",
+    welcomeLead: "请按提示填写公司信息、摄像头组和识别需求。提交后，我们会据此确认接入方式、功能范围和部署方案。",
+    startSurvey: "开始",
+    newProject: "新建",
+    export: "导出",
+    exportCsv: "CSV 文件",
+    exportJson: "JSON 文件",
+    exportWord: "客户确认版 Word",
+    save: "保存",
+    progressTitle: "填写进度",
+    progressReady: "准备中",
+    pathTitle: "填写路径",
+    navCompany: "1. 公司信息",
+    navCamera: "2. 摄像头组",
+    navConditions: "3. 整体约束",
+    navAttachments: "4. 上传附件",
+    draftTitle: "已有草稿",
+    companyTitle: "公司基础信息",
+    companyDesc: "仅用于联系和识别客户类型，不填写项目建设周期、预算等商务信息。",
+    companyName: "公司名称",
+    companyNamePh: "例如：某某制造有限公司",
+    industry: "单位性质",
+    contactName: "联系人",
+    contactNamePh: "姓名",
+    contactPhone: "联系方式",
+    contactPhonePh: "手机号 / 微信 / 邮箱",
+    address: "所在城市/区域",
+    addressPh: "例如：武汉市 / 某某园区",
+    contactRole: "联系角色",
+    contactRolePh: "例如：安全负责人 / 设备负责人 / 项目联系人",
+    cameraTitle: "摄像头组与功能选择",
+    cameraDesc: "摄像头型号及用途相同放在同一组，若有差异则新增另一组。",
+    addAnotherGroup: "新增另一组摄像头",
+    conditionsTitle: "整体约束",
+    conditionsDesc: "以下信息影响 AI 接入、数据安全和系统对接；不确定时可选择待确认。",
+    internetPolicy: "系统网络环境",
+    aiPolicy: "AI方式限制",
+    compliance: "数据安全/保密要求",
+    compliancePh: "没有可写无；有要求请简述",
+    messageIntegration: "消息通知对接",
+    messageIntegrationPh: "企业微信 / 钉钉 / 飞书 / 短信 / 不需要",
+    systemIntegration: "业务系统对接",
+    systemIntegrationPh: "OA / 工单 / 安防平台 / 不需要",
+    extraNotes: "其他说明",
+    extraNotesPh: "标准菜单外的识别目标、特殊流程或补充说明",
+    attachmentTitle: "上传附件",
+    attachmentDesc: "可上传现场平面图、摄像头清单或其他资料。",
+    uploadAttachment: "上传附件",
+    attachmentNote: "支持图片、PDF、Office、CSV、TXT、压缩包，单个文件不超过 20MB。",
+    emptyGroupTitle: "还没有摄像头组",
+    emptyGroupDesc: "从下方新增第一组摄像头。",
+    selectPlaceholder: "请选择",
+    groupDefaultName: "摄像头组 {index}",
+    unnamedGroup: "未命名摄像头组",
+    cameraCountUnit: "{count} 路摄像头",
+    featureCount: "已选 {count} 项功能",
+    groupComplete: "已完成",
+    groupPending: "待配置",
+    pendingFill: "待填写",
+    duplicateGroup: "复制本组",
+    delete: "删除",
+    clickOpen: "点击展开",
+    clickClose: "点击收起",
+    cameraInfo: "摄像头信息",
+    cameraInfoDesc: "数量和接入方式用于后续确认部署与报价。",
+    groupName: "组名",
+    groupNamePh: "例如：仓库摄像头 / 门岗摄像头",
+    cameraCount: "摄像头数量",
+    locationNote: "位置备注",
+    locationNotePh: "例如：仓库A区、消防通道、园区东门",
+    vendor: "厂商",
+    resolution: "分辨率",
+    accessMethod: "接入方式",
+    notes: "补充说明",
+    notesPh: "现场特殊情况、客户叫法、重点关注问题等",
+    featureSelection: "功能选择",
+    featureSelectionDesc: "同一组摄像头可同时选择多项识别功能。",
+    addCurrentRecommended: "添加当前推荐",
+    recommendedFeatures: "推荐功能",
+    noRecommendWithText: "暂无匹配推荐，可从下方功能列表手动选择。",
+    noRecommendEmpty: "填写组名或位置后，可出现可点击的推荐项；推荐项不会自动勾选。",
+    hit: "命中",
+    multiSelect: "可多选",
+    selectedCount: "已选 {count}",
+    finishAndCollapse: "完成本组并收起",
+    noDraft: "暂无本地草稿",
+    preview: "预览",
+    noAttachment: "暂无附件。",
+    addedRecommended: "已添加 {count} 项当前推荐。",
+    noRecommendedToAdd: "当前没有可添加的推荐项。",
+    groupDone: "本组已完成。",
+    groupCollapsed: "本组已收起，仍可继续补充。",
+    keepOneGroup: "至少保留一个摄像头组。",
+    saved: "已保存到本地。",
+    blankCreated: "已新建空白调研。",
+    loadedDraft: "已载入草稿。",
+    chooseAttachment: "请先选择附件。",
+    uploaded: "附件已上传。",
+    deletedAttachment: "附件已删除。",
+    confirmDeleteAttachment: "确定删除这个附件吗？",
+    unsupportedFile: "不支持的附件类型：{name}",
+    fileTooLarge: "附件超过 20MB：{name}",
+    exportIncompleteConfirm: "以下内容仍未完成：\n\n{issues}\n\n是否继续导出？",
+    requestFailed: "请求失败：{status}",
+    derivedRequirement: "智慧安防需求调研",
+    defaultDraftName: "智慧安防需求调研",
+    progressText: "{complete}/{total} 项完成",
+    checkCompany: "公司基础信息",
+    checkGroups: "当前 {count} 个摄像头组",
+    checkCompleteGroups: "{complete}/{total} 组已完成",
+    checkInfoGroups: "{complete}/{total} 组已填写名称和数量",
+    checkFeatureGroups: "{complete}/{total} 组已选择功能",
+    issueCompany: "公司名称",
+    issueIndustry: "单位性质",
+    issueContact: "联系方式",
+    issueGroupName: "第 {index} 组名称",
+    issueGroupCount: "第 {index} 组摄像头数量",
+    issueGroupFeature: "第 {index} 组功能选择"
+  },
+  ja: {
+    metaTitle: "スマート保安ニーズ調査",
+    langButton: "中文",
+    brandLabel: "ニーズ調査",
+    appTitle: "スマート保安ニーズ調査",
+    welcomeKicker: "スマート保安ニーズ調査",
+    welcomeTitle: "スマート保安ニーズ調査へようこそ",
+    welcomeLead: "会社情報、カメラグループ、検知したい項目を順番に入力してください。送信後、接続方式、機能範囲、導入方法を確認します。",
+    startSurvey: "開始",
+    newProject: "新規",
+    export: "出力",
+    exportCsv: "CSV ファイル",
+    exportJson: "JSON ファイル",
+    exportWord: "確認用 Word",
+    save: "保存",
+    progressTitle: "入力進捗",
+    progressReady: "準備中",
+    pathTitle: "入力手順",
+    navCompany: "1. 会社情報",
+    navCamera: "2. カメラグループ",
+    navConditions: "3. 全体条件",
+    navAttachments: "4. 添付資料",
+    draftTitle: "下書き",
+    companyTitle: "会社基本情報",
+    companyDesc: "連絡先と顧客種別の確認用です。導入時期や予算などの商談情報は入力不要です。",
+    companyName: "会社名",
+    companyNamePh: "例：○○製造株式会社",
+    industry: "業種・施設種別",
+    contactName: "担当者",
+    contactNamePh: "氏名",
+    contactPhone: "連絡先",
+    contactPhonePh: "電話 / WeChat / メール",
+    address: "都市・エリア",
+    addressPh: "例：武漢市 / ○○園区",
+    contactRole: "担当区分",
+    contactRolePh: "例：安全責任者 / 設備責任者 / 窓口担当",
+    cameraTitle: "カメラグループと機能選択",
+    cameraDesc: "型番と用途が同じカメラは同じグループに入れ、違いがある場合は別グループを追加してください。",
+    addAnotherGroup: "別のカメラグループを追加",
+    conditionsTitle: "全体条件",
+    conditionsDesc: "AI 接続、データ管理、システム連携に関わる情報です。不明な場合は「要確認」を選択してください。",
+    internetPolicy: "ネットワーク環境",
+    aiPolicy: "AI 利用条件",
+    compliance: "データ管理・機密要件",
+    compliancePh: "特になければ「なし」。要件があれば簡単に記入",
+    messageIntegration: "通知先連携",
+    messageIntegrationPh: "WeCom / DingTalk / Feishu / SMS / 不要",
+    systemIntegration: "業務システム連携",
+    systemIntegrationPh: "OA / チケット / 監視平台 / 不要",
+    extraNotes: "その他",
+    extraNotesPh: "標準メニュー以外の検知対象、特殊な流れ、補足事項",
+    attachmentTitle: "添付資料",
+    attachmentDesc: "平面図、カメラ一覧、その他資料をアップロードできます。",
+    uploadAttachment: "添付資料をアップロード",
+    attachmentNote: "画像、PDF、Office、CSV、TXT、圧縮ファイルに対応。1ファイル 20MB まで。",
+    emptyGroupTitle: "カメラグループがありません",
+    emptyGroupDesc: "下のボタンから最初のグループを追加してください。",
+    selectPlaceholder: "選択してください",
+    groupDefaultName: "カメラグループ {index}",
+    unnamedGroup: "未命名カメラグループ",
+    cameraCountUnit: "カメラ {count} 台",
+    featureCount: "{count} 項目選択済み",
+    groupComplete: "完了",
+    groupPending: "未設定",
+    pendingFill: "未入力",
+    duplicateGroup: "このグループを複製",
+    delete: "削除",
+    clickOpen: "クリックして展開",
+    clickClose: "クリックして閉じる",
+    cameraInfo: "カメラ情報",
+    cameraInfoDesc: "台数と接続方式は、導入構成と見積確認に使用します。",
+    groupName: "グループ名",
+    groupNamePh: "例：倉庫カメラ / 正門カメラ",
+    cameraCount: "カメラ台数",
+    locationNote: "場所メモ",
+    locationNotePh: "例：倉庫A、消防通路、園区東門",
+    vendor: "メーカー",
+    resolution: "解像度",
+    accessMethod: "接続方式",
+    notes: "補足",
+    notesPh: "現場特有の呼び方、重点的に確認したい問題など",
+    featureSelection: "機能選択",
+    featureSelectionDesc: "同じグループで複数の検知機能を選択できます。",
+    addCurrentRecommended: "現在のおすすめを追加",
+    recommendedFeatures: "おすすめ機能",
+    noRecommendWithText: "一致するおすすめはありません。下の機能一覧から選択してください。",
+    noRecommendEmpty: "グループ名や場所を入力すると、おすすめ項目が表示されます。自動選択はされません。",
+    hit: "該当",
+    multiSelect: "複数選択可",
+    selectedCount: "{count} 個選択済み",
+    finishAndCollapse: "このグループを完了して閉じる",
+    noDraft: "下書きはありません",
+    preview: "プレビュー",
+    noAttachment: "添付資料はありません。",
+    addedRecommended: "現在のおすすめを {count} 件追加しました。",
+    noRecommendedToAdd: "追加できるおすすめはありません。",
+    groupDone: "このグループは完了しました。",
+    groupCollapsed: "このグループを閉じました。あとで追加入力できます。",
+    keepOneGroup: "少なくとも1つのカメラグループを残してください。",
+    saved: "ローカルに保存しました。",
+    blankCreated: "空の調査を新規作成しました。",
+    loadedDraft: "下書きを読み込みました。",
+    chooseAttachment: "先に添付ファイルを選択してください。",
+    uploaded: "添付資料をアップロードしました。",
+    deletedAttachment: "添付資料を削除しました。",
+    confirmDeleteAttachment: "この添付資料を削除しますか？",
+    unsupportedFile: "対応していないファイル形式：{name}",
+    fileTooLarge: "添付ファイルが 20MB を超えています：{name}",
+    exportIncompleteConfirm: "未完了の項目があります：\n\n{issues}\n\nこのまま出力しますか？",
+    requestFailed: "リクエスト失敗：{status}",
+    derivedRequirement: "スマート保安ニーズ調査",
+    defaultDraftName: "スマート保安ニーズ調査",
+    progressText: "{complete}/{total} 完了",
+    checkCompany: "会社基本情報",
+    checkGroups: "現在 {count} 個のカメラグループ",
+    checkCompleteGroups: "{complete}/{total} グループ完了",
+    checkInfoGroups: "{complete}/{total} グループが名称と台数を入力済み",
+    checkFeatureGroups: "{complete}/{total} グループが機能を選択済み",
+    issueCompany: "会社名",
+    issueIndustry: "業種・施設種別",
+    issueContact: "連絡先",
+    issueGroupName: "第 {index} グループ名",
+    issueGroupCount: "第 {index} グループのカメラ台数",
+    issueGroupFeature: "第 {index} グループの機能選択"
+  }
+};
+
+const OPTION_LABELS = {
+  "生产厂区 / 制造业": "生産工場 / 製造業",
+  "物流园区 / 仓储": "物流エリア / 倉庫",
+  "产业园区 / 写字楼": "産業団地 / オフィス",
+  "商超 / 商业综合体": "スーパー / 商業施設",
+  "能源化工 / 高危场所": "エネルギー・化学 / 高リスク現場",
+  "学校 / 医院 / 公共机构": "学校 / 病院 / 公共機関",
+  "物业 / 社区": "不動産管理 / コミュニティ",
+  "其他": "その他",
+  "待确认": "要確認",
+  "不清楚": "不明",
+  "海康": "Hikvision",
+  "大华": "Dahua",
+  "宇视": "Uniview",
+  "华为": "Huawei",
+  "厂商SDK": "メーカーSDK",
+  "平台API": "プラットフォームAPI",
+  "可访问互联网": "インターネット接続可",
+  "仅内网": "社内ネットワークのみ",
+  "需审批后访问外网": "承認後に外部接続可",
+  "完全离线": "完全オフライン",
+  "可调用外部AI服务": "外部AIサービス利用可",
+  "本地优先": "ローカル優先",
+  "只能本地": "ローカルのみ"
+};
+
+const CATEGORY_LABELS_JA = {
+  person: "人員・行動",
+  ppe: "作業ルール・保護具",
+  fire: "消防・煙火",
+  vehicle: "車両・道路",
+  logistics: "倉庫・物流",
+  perimeter: "境界・区域",
+  environment: "環境・秩序"
+};
+
+const FEATURE_LABELS_JA = {
+  "person-intrusion": "人員侵入 / 立入禁止区域",
+  "line-crossing": "ライン越え検知",
+  crowd: "人員密集",
+  loitering: "長時間滞留 / 不審徘徊",
+  fall: "転倒 / 倒れ込み",
+  conflict: "衝突・トラブル疑い",
+  absence: "無人持ち場 / 離席",
+  sleeping: "居眠り / 寝落ち",
+  helmet: "ヘルメット未着用",
+  vest: "作業服 / 反射ベスト未着用",
+  "other-ppe": "その他保護具未着用",
+  "danger-zone": "危険区域への接近 / 侵入",
+  "height-work": "高所・端部エリア人員検知",
+  smoking: "喫煙検知",
+  flame: "火炎 / 裸火検知",
+  smoke: "煙・濃煙検知",
+  "fire-lane-block": "消防通路占有",
+  "exit-block": "避難口・安全出口の塞ぎ",
+  "fire-equipment-block": "消防設備の遮蔽",
+  plate: "車両 / ナンバープレート認識",
+  "illegal-parking": "違法駐車",
+  "vehicle-stay": "車両長時間停車",
+  "reverse-driving": "逆走検知",
+  "mixed-traffic": "人車混在",
+  "traffic-count": "車流統計",
+  "bike-parking": "二輪車の乱停車",
+  "cargo-block": "貨物 / パレット通路占有",
+  "cargo-overline": "貨物のライン越え / 異常積載",
+  "dock-occupied": "積卸エリア占有",
+  "forklift-block": "フォークリフト / 車両通路占有",
+  "shelf-aisle-block": "棚通路の塞ぎ",
+  "warehouse-restricted": "倉庫制限区域への人員侵入",
+  "perimeter-intrusion": "境界侵入 / ライン越え",
+  climbing: "乗り越え / よじ登り",
+  "night-intrusion": "夜間境界侵入",
+  "area-stay": "境界付近の長時間滞留",
+  trash: "ごみ / 雑物放置",
+  "channel-block": "通路塞ぎ / 物品占有",
+  water: "浸水 / 水たまり",
+  custom: "その他カスタム検知"
+};
+
+const FEATURE_DESC_JA = {
+  "person-intrusion": "立入禁止区域への人員侵入を検知します。",
+  "line-crossing": "指定した境界線を越えた対象を検知します。",
+  crowd: "局所的な人員密集を検知します。",
+  loitering: "長時間の滞留や反復徘徊を検知します。",
+  fall: "人員の転倒や倒れ込みを検知します。",
+  conflict: "明らかな身体的衝突などの異常行動を検知します。",
+  absence: "重要な持ち場や監視点が無人になった状態を検知します。",
+  sleeping: "当直・操作席での居眠りを検知します。",
+  helmet: "ヘルメット未着用を検知します。",
+  vest: "指定作業服や反射ベストの未着用を検知します。",
+  "other-ppe": "マスク、保護メガネ、手袋など、現場サンプルに合わせて確認します。",
+  "danger-zone": "危険区域への接近や侵入を検知します。",
+  "height-work": "高所、屋根、端部などの人員を検知します。",
+  smoking: "喫煙行為を検知します。",
+  flame: "火炎や裸火を検知します。",
+  smoke: "煙、濃煙などの視覚的な火災兆候を検知します。",
+  "fire-lane-block": "消防通路や消防車道の占有を検知します。",
+  "exit-block": "安全出口や避難口の塞ぎを検知します。",
+  "fire-equipment-block": "消火栓、消火器、消防箱周辺の遮蔽を検知します。",
+  plate: "車両とナンバープレートを認識します。",
+  "illegal-parking": "禁止区域への駐車を検知します。",
+  "vehicle-stay": "指定区域での車両長時間停車を検知します。",
+  "reverse-driving": "逆方向走行を検知します。",
+  "mixed-traffic": "重点通路で人と車両が混在する状態を検知します。",
+  "traffic-count": "車両の出入りや交通量を集計します。",
+  "bike-parking": "自転車、電動車などの乱停車を検知します。",
+  "cargo-block": "貨物やパレットによる通路占有を検知します。",
+  "cargo-overline": "指定ラインを越えた積載や異常積載を検知します。",
+  "dock-occupied": "積卸口やドックの占有を検知します。",
+  "forklift-block": "フォークリフトや車両の通路占有・違停を検知します。",
+  "shelf-aisle-block": "棚通路やピッキング通路の塞ぎを検知します。",
+  "warehouse-restricted": "倉庫内の制限区域への侵入を検知します。",
+  "perimeter-intrusion": "フェンス、壁、境界区域への侵入を検知します。",
+  climbing: "フェンスや壁を乗り越える行為を検知します。",
+  "night-intrusion": "夜間の境界侵入を検知します。",
+  "area-stay": "境界付近での長時間滞留を検知します。",
+  trash: "ごみや雑物の放置を検知します。",
+  "channel-block": "通路、廊下、荷物搬入口の占有を検知します。",
+  water: "明らかな浸水や水たまりを検知します。",
+  custom: "希望する検知対象と判断基準を記入してください。"
+};
+
+const FEATURE_KEYWORD_ALIASES_JA = {
+  "person-intrusion": ["入口", "立入禁止", "制限区域", "倉庫", "危険"],
+  "line-crossing": ["境界", "ライン", "フェンス", "立入禁止"],
+  crowd: ["入口", "食堂", "寮", "共用部", "混雑"],
+  loitering: ["入口", "裏口", "フェンス", "徘徊", "滞留"],
+  fall: ["階段", "高リスク", "転倒"],
+  conflict: ["入口", "駐車場", "共用部", "トラブル"],
+  absence: ["持ち場", "操作台", "監視", "無人"],
+  sleeping: ["持ち場", "操作台", "居眠り"],
+  helmet: ["工場", "作業", "施工", "設備", "ヘルメット"],
+  vest: ["物流", "積卸", "作業服", "反射ベスト"],
+  "other-ppe": ["溶接", "化学", "危険", "保護具"],
+  "danger-zone": ["設備", "ロボット", "危険", "立入禁止"],
+  "height-work": ["高所", "屋根", "端部", "足場"],
+  smoking: ["喫煙", "倉庫", "休憩", "危険物"],
+  flame: ["火気", "配電", "倉庫", "危険物"],
+  smoke: ["煙", "配電", "倉庫", "密閉"],
+  "fire-lane-block": ["消防", "通路", "道路"],
+  "exit-block": ["安全出口", "避難", "階段"],
+  "fire-equipment-block": ["消防設備", "消火栓", "消火器"],
+  plate: ["正門", "入口", "駐車", "物流門"],
+  "illegal-parking": ["道路", "正門", "消防", "駐車禁止"],
+  "vehicle-stay": ["積卸", "正門", "物流"],
+  "reverse-driving": ["道路", "一方通行", "逆走"],
+  "mixed-traffic": ["物流", "フォークリフト", "主通路", "積卸"],
+  "traffic-count": ["入口", "道路", "駐車"],
+  "bike-parking": ["入口", "階段", "消防", "駐輪"],
+  "cargo-block": ["倉庫", "貨物", "パレット", "通路"],
+  "cargo-overline": ["倉庫", "黄線", "消防線", "棚"],
+  "dock-occupied": ["積卸", "ドック", "物流"],
+  "forklift-block": ["フォークリフト", "倉庫", "通路"],
+  "shelf-aisle-block": ["棚", "倉庫", "ピッキング"],
+  "warehouse-restricted": ["倉庫", "危険物", "制限区域"],
+  "perimeter-intrusion": ["境界", "フェンス", "壁", "裏口"],
+  climbing: ["フェンス", "壁", "よじ登り"],
+  "night-intrusion": ["夜間", "境界", "裏口"],
+  "area-stay": ["入口", "境界", "フェンス", "滞留"],
+  trash: ["ごみ", "雑物", "通路", "角"],
+  "channel-block": ["通路", "廊下", "荷物", "倉庫"],
+  water: ["地下", "倉庫", "機械室", "水"],
+  custom: ["その他", "カスタム"]
+};
+
 const els = {
+  companyForm: document.querySelector("#companyForm"),
   conditionsForm: document.querySelector("#conditionsForm"),
+  startSurveyBtn: document.querySelector("#startSurveyBtn"),
+  langToggleBtn: document.querySelector("#langToggleBtn"),
   cameraGroupList: document.querySelector("#cameraGroupList"),
   addGroupLargeBtn: document.querySelector("#addGroupLargeBtn"),
   saveBtn: document.querySelector("#saveBtn"),
@@ -37,17 +462,18 @@ const els = {
 init();
 
 async function init() {
-  const catalog = await fetchJson("/api/catalog");
+  applyLanguage();
+  const catalog = await loadCatalog();
   state.catalog = catalog.featureCatalog;
   bindEvents();
 
   const url = new URL(window.location.href);
-  const projectId = url.searchParams.get("project") || localStorage.getItem("dubhe:lastProjectId");
+  const projectId = url.searchParams.get("project") || localStorage.getItem(LAST_PROJECT_KEY);
   if (projectId) {
     try {
-      await loadProject(projectId);
+      await loadProject(projectId, { silent: true });
     } catch {
-      localStorage.removeItem("dubhe:lastProjectId");
+      localStorage.removeItem(LAST_PROJECT_KEY);
       window.history.replaceState({}, "", window.location.pathname);
       state.cameraGroups = [newGroup({ open: false })];
       renderAll();
@@ -60,8 +486,47 @@ async function init() {
   refreshProjectList();
 }
 
+async function loadCatalog() {
+  try {
+    return await fetchJson("/api/catalog");
+  } catch {
+    return fetchJson("/catalog.json");
+  }
+}
+
 function bindEvents() {
+  els.langToggleBtn.addEventListener("click", () => {
+    state.language = state.language === "zh" ? "ja" : "zh";
+    localStorage.setItem(LANGUAGE_KEY, state.language);
+    applyLanguage();
+    renderAll();
+    refreshProjectList();
+  });
+
+  els.startSurveyBtn.addEventListener("click", () => enterSurvey());
+
+  els.companyForm.addEventListener("input", (event) => {
+    const key = event.target.dataset.project;
+    if (!key) return;
+    state.project[key] = event.target.value;
+    updateCompletion();
+  });
+
+  els.companyForm.addEventListener("change", (event) => {
+    const key = event.target.dataset.project;
+    if (!key) return;
+    state.project[key] = event.target.value;
+    updateCompletion();
+  });
+
   els.conditionsForm.addEventListener("input", (event) => {
+    const key = event.target.dataset.condition;
+    if (!key) return;
+    state.conditions[key] = event.target.value;
+    updateCompletion();
+  });
+
+  els.conditionsForm.addEventListener("change", (event) => {
     const key = event.target.dataset.condition;
     if (!key) return;
     state.conditions[key] = event.target.value;
@@ -113,7 +578,7 @@ function bindEvents() {
     if (action === "add-feature") addFeature(groupId, actionEl.dataset.featureId);
     if (action === "add-all-recommended") {
       const addedCount = addAllRecommended(groupId);
-      showToast(addedCount ? `已添加 ${addedCount} 项当前推荐。` : "当前没有可添加的推荐项。");
+      showToast(addedCount ? t("addedRecommended", { count: addedCount }) : t("noRecommendedToAdd"));
     }
     renderGroups();
     updateCompletion();
@@ -137,6 +602,60 @@ function bindEvents() {
   });
 }
 
+function enterSurvey() {
+  document.body.classList.remove("welcome-active");
+  document.querySelector("#companyCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function applyLanguage() {
+  document.documentElement.lang = state.language === "ja" ? "ja-JP" : "zh-CN";
+  document.title = t("metaTitle");
+  els.langToggleBtn.textContent = t("langButton");
+  for (const node of document.querySelectorAll("[data-i18n]")) {
+    node.textContent = t(node.dataset.i18n);
+  }
+  for (const node of document.querySelectorAll("[data-i18n-placeholder]")) {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  }
+  translateStaticOptions();
+}
+
+function translateStaticOptions() {
+  for (const option of document.querySelectorAll("option")) {
+    if (!option.value) {
+      option.textContent = t("selectPlaceholder");
+      continue;
+    }
+    option.textContent = optionLabel(option.value);
+  }
+}
+
+function t(key, params = {}) {
+  const template = I18N[state.language]?.[key] ?? I18N.zh[key] ?? key;
+  return template.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? "");
+}
+
+function optionLabel(value) {
+  if (!value) return t("selectPlaceholder");
+  if (state.language === "ja") return OPTION_LABELS[value] || value;
+  return value;
+}
+
+function categoryLabel(category) {
+  if (state.language === "ja") return CATEGORY_LABELS_JA[category.id] || category.name;
+  return category.name;
+}
+
+function featureLabel(item) {
+  if (state.language === "ja") return FEATURE_LABELS_JA[item.id] || item.name;
+  return item.name;
+}
+
+function featureDescription(item) {
+  if (state.language === "ja") return FEATURE_DESC_JA[item.id] || item.description;
+  return item.description;
+}
+
 function toggleExportMenu() {
   const isOpen = !els.exportMenu.hidden;
   els.exportMenu.hidden = isOpen;
@@ -155,7 +674,8 @@ function emptyProject() {
     industry: "",
     address: "",
     contactName: "",
-    contactPhone: ""
+    contactPhone: "",
+    contactRole: ""
   };
 }
 
@@ -187,10 +707,18 @@ function newGroup(seed = {}) {
 }
 
 function renderAll() {
+  applyLanguage();
+  fillCompanyForm();
   fillConditionsForm();
   renderGroups();
   renderAttachments();
   updateCompletion();
+}
+
+function fillCompanyForm() {
+  for (const input of els.companyForm.querySelectorAll("[data-project]")) {
+    input.value = state.project[input.dataset.project] || "";
+  }
 }
 
 function fillConditionsForm() {
@@ -202,6 +730,7 @@ function fillConditionsForm() {
 function renderGroups() {
   if (!state.cameraGroups.length) {
     els.cameraGroupList.innerHTML = document.querySelector("#emptyGroupTemplate").innerHTML;
+    applyLanguage();
     return;
   }
 
@@ -220,39 +749,39 @@ function groupCard(group, index) {
           <span class="group-index">${index + 1}</span>
           <div>
             <div class="group-title-line">
-              <strong data-group-title="${group.id}">${escapeHtml(group.name || `摄像头组 ${index + 1}`)}</strong>
-              <button class="small ghost copy-inline" type="button" data-action="duplicate" data-group-id="${group.id}">复制本组</button>
+              <strong data-group-title="${group.id}">${escapeHtml(group.name || t("groupDefaultName", { index: index + 1 }))}</strong>
+              <button class="small ghost copy-inline" type="button" data-action="duplicate" data-group-id="${group.id}">${t("duplicateGroup")}</button>
             </div>
             <span data-group-summary="${group.id}">${groupSummary(group)}</span>
           </div>
         </div>
         <div class="group-actions">
-          <span class="status-pill ${complete ? "ok" : ""}">${complete ? "已完成" : "待填写"}</span>
-          <span class="toggle-hint">${expanded ? "点击收起" : "点击展开"}</span>
-          <button class="small danger" type="button" data-action="delete" data-group-id="${group.id}">删除</button>
+          <span class="status-pill ${complete ? "ok" : ""}">${complete ? t("groupComplete") : t("pendingFill")}</span>
+          <span class="toggle-hint">${expanded ? t("clickClose") : t("clickOpen")}</span>
+          <button class="small danger" type="button" data-action="delete" data-group-id="${group.id}">${t("delete")}</button>
         </div>
       </div>
       <div class="group-body">
         <div class="subheading first">
-          <h3>摄像头信息</h3>
-          <p>数量和接入方式用于后续确认部署与报价。</p>
+          <h3>${t("cameraInfo")}</h3>
+          <p>${t("cameraInfoDesc")}</p>
         </div>
         <div class="grid-form">
-          ${field("组名", group, "name", "例如：仓库摄像头 / 门岗摄像头")}
-          ${field("摄像头数量", group, "cameraCount", "1", "number")}
-          ${field("位置备注", group, "locationNote", "例如：仓库A区、消防通道、园区东门")}
-          ${selectField("厂商", group, "vendor", ["", "海康", "大华", "宇视", "华为", "其他", "不清楚"])}
-          ${selectField("分辨率", group, "resolution", ["", "720P", "1080P", "2K", "4K", "混合", "不清楚"])}
-          ${selectField("接入方式", group, "accessMethod", ["", "RTSP", "ONVIF", "GB28181", "厂商SDK", "平台API", "不清楚"])}
-          ${textareaField("补充说明", group, "notes", "现场特殊情况、客户叫法、重点关注问题等", "span-2")}
+          ${field(t("groupName"), group, "name", t("groupNamePh"))}
+          ${field(t("cameraCount"), group, "cameraCount", "1", "number")}
+          ${field(t("locationNote"), group, "locationNote", t("locationNotePh"))}
+          ${selectField(t("vendor"), group, "vendor", ["", "海康", "大华", "宇视", "华为", "其他", "不清楚"])}
+          ${selectField(t("resolution"), group, "resolution", ["", "720P", "1080P", "2K", "4K", "混合", "不清楚"])}
+          ${selectField(t("accessMethod"), group, "accessMethod", ["", "RTSP", "ONVIF", "GB28181", "厂商SDK", "平台API", "不清楚"])}
+          ${textareaField(t("notes"), group, "notes", t("notesPh"), "span-2")}
         </div>
 
         <div class="subheading">
           <div>
-            <h3>功能选择</h3>
-            <p>同一组摄像头可同时选择多项识别功能。</p>
+            <h3>${t("featureSelection")}</h3>
+            <p>${t("featureSelectionDesc")}</p>
           </div>
-          <button class="small ghost" type="button" data-action="add-all-recommended" data-group-id="${group.id}">添加当前推荐</button>
+          <button class="small ghost" type="button" data-action="add-all-recommended" data-group-id="${group.id}">${t("addCurrentRecommended")}</button>
         </div>
         <div data-recommendations="${group.id}">
           ${recommendationBlock(group, recommended)}
@@ -261,7 +790,7 @@ function groupCard(group, index) {
           ${state.catalog.map((category) => featureCategory(category, group, selected)).join("")}
         </div>
         <div class="group-done-row">
-          <button class="primary" type="button" data-action="collapse-group" data-group-id="${group.id}">完成本组并收起</button>
+          <button class="primary" type="button" data-action="collapse-group" data-group-id="${group.id}">${t("finishAndCollapse")}</button>
         </div>
       </div>
     </article>
@@ -269,7 +798,7 @@ function groupCard(group, index) {
 }
 
 function groupSummary(group) {
-  return `${Number(group.cameraCount || 1)} 路摄像头 · 已选 ${group.features.length} 项功能 · ${isGroupComplete(group) ? "已完成" : "待配置"}`;
+  return `${t("cameraCountUnit", { count: Number(group.cameraCount || 1) })} · ${t("featureCount", { count: group.features.length })} · ${isGroupComplete(group) ? t("groupComplete") : t("groupPending")}`;
 }
 
 function field(label, group, key, placeholder, type = "text") {
@@ -292,7 +821,7 @@ function selectField(label, group, key, options) {
   return `
     <label>${label}
       <select data-group-id="${group.id}" data-group-field="${key}">
-        ${options.map((option) => `<option value="${escapeAttr(option)}" ${group[key] === option ? "selected" : ""}>${option || "请选择"}</option>`).join("")}
+        ${options.map((option) => `<option value="${escapeAttr(option)}" ${group[key] === option ? "selected" : ""}>${escapeHtml(optionLabel(option))}</option>`).join("")}
       </select>
     </label>
   `;
@@ -303,19 +832,19 @@ function recommendationBlock(group, recommended) {
     const hasText = normalize(`${group.name} ${group.locationNote} ${group.notes}`).trim();
     return `
       <div class="recommend-box">
-        <strong>推荐功能</strong>
-        <span>${hasText ? "暂无匹配推荐，可从下方功能列表手动选择。" : "填写组名或位置后，可出现可点击的推荐项；推荐项不会自动勾选。"}</span>
+        <strong>${t("recommendedFeatures")}</strong>
+        <span>${hasText ? t("noRecommendWithText") : t("noRecommendEmpty")}</span>
       </div>
     `;
   }
   return `
     <div class="recommend-box has-items">
-      <strong>推荐功能</strong>
+      <strong>${t("recommendedFeatures")}</strong>
       <div class="recommend-list">
         ${recommended.map((item) => `
-          <button class="chip recommended" type="button" data-action="add-feature" data-group-id="${group.id}" data-feature-id="${item.id}" title="命中：${escapeAttr(item.matches.join("、"))}">
-            <span>${escapeHtml(item.name)}</span>
-            <small>命中：${escapeHtml(item.matches.join("、"))}</small>
+          <button class="chip recommended" type="button" data-action="add-feature" data-group-id="${group.id}" data-feature-id="${item.id}" title="${t("hit")}：${escapeAttr(item.matches.join("、"))}">
+            <span>${escapeHtml(featureLabel(item))}</span>
+            <small>${t("hit")}：${escapeHtml(item.matches.join("、"))}</small>
           </button>
         `).join("")}
       </div>
@@ -328,16 +857,16 @@ function featureCategory(category, group, selected) {
   return `
     <section class="feature-category">
       <header>
-        <strong>${escapeHtml(category.name)}</strong>
-        <span>${selectedCount ? `已选 ${selectedCount}` : "可多选"}</span>
+        <strong>${escapeHtml(categoryLabel(category))}</strong>
+        <span>${selectedCount ? t("selectedCount", { count: selectedCount }) : t("multiSelect")}</span>
       </header>
       <div class="feature-grid">
         ${category.items.map((item) => {
           const isSelected = selected.has(item.id);
           return `
-            <label class="feature-option ${isSelected ? "selected" : ""}" title="${escapeAttr(item.description)}">
+            <label class="feature-option ${isSelected ? "selected" : ""}" title="${escapeAttr(featureDescription(item))}">
               <input type="checkbox" data-group-id="${group.id}" data-feature-id="${item.id}" ${isSelected ? "checked" : ""} />
-              <span>${escapeHtml(item.name)}</span>
+              <span>${escapeHtml(featureLabel(item))}</span>
             </label>
           `;
         }).join("")}
@@ -354,16 +883,17 @@ function recommendFeatures(group) {
   for (const category of state.catalog) {
     for (const item of category.items) {
       if (selected.has(item.id)) continue;
-      const matches = (item.keywords || []).filter((keyword) => text.includes(normalize(keyword)));
+      const keywords = [...(item.keywords || []), ...(FEATURE_KEYWORD_ALIASES_JA[item.id] || [])];
+      const matches = keywords.filter((keyword) => text.includes(normalize(keyword)));
       if (matches.length > 0) scored.push({ ...item, score: matches.length, matches: [...new Set(matches)] });
     }
   }
-  return scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-Hans-CN")).slice(0, 8);
+  return scored.sort((a, b) => b.score - a.score || featureLabel(a).localeCompare(featureLabel(b), localeCode())).slice(0, 8);
 }
 
 function updateGroupDynamicUi(group) {
   const title = document.querySelector(`[data-group-title="${group.id}"]`);
-  if (title) title.textContent = group.name || "未命名摄像头组";
+  if (title) title.textContent = group.name || t("unnamedGroup");
   const summary = document.querySelector(`[data-group-summary="${group.id}"]`);
   if (summary) summary.textContent = groupSummary(group);
   const target = document.querySelector(`[data-recommendations="${group.id}"]`);
@@ -431,7 +961,7 @@ function collapseGroup(groupId) {
   const group = findGroup(groupId);
   if (!group) return;
   group.open = false;
-  showToast(isGroupComplete(group) ? "本组已完成。" : "本组已收起，仍可继续补充。");
+  showToast(isGroupComplete(group) ? t("groupDone") : t("groupCollapsed"));
 }
 
 function duplicateGroup(groupId) {
@@ -440,7 +970,7 @@ function duplicateGroup(groupId) {
   const copy = newGroup({
     ...structuredClone(group),
     id: crypto.randomUUID(),
-    name: `${group.name || "摄像头组"} 副本`,
+    name: `${group.name || t("unnamedGroup")} ${state.language === "ja" ? "コピー" : "副本"}`,
     open: true
   });
   state.cameraGroups.forEach((item) => {
@@ -452,7 +982,7 @@ function duplicateGroup(groupId) {
 
 function deleteGroup(groupId) {
   if (state.cameraGroups.length === 1) {
-    showToast("至少保留一个摄像头组。");
+    showToast(t("keepOneGroup"));
     return;
   }
   state.cameraGroups = state.cameraGroups.filter((group) => group.id !== groupId);
@@ -461,6 +991,7 @@ function deleteGroup(groupId) {
 async function saveProject(silent = false) {
   state.project = {
     ...emptyProject(),
+    ...state.project,
     projectName: deriveDraftName()
   };
   const response = await fetchJson("/api/projects/save", {
@@ -474,26 +1005,27 @@ async function saveProject(silent = false) {
     })
   });
   applyProject(response.project);
-  localStorage.setItem("dubhe:lastProjectId", state.id);
+  localStorage.setItem(LAST_PROJECT_KEY, state.id);
   const url = new URL(window.location.href);
   url.searchParams.set("project", state.id);
   window.history.replaceState({}, "", url);
   refreshProjectList();
-  if (!silent) showToast("已保存到本地。");
+  if (!silent) showToast(t("saved"));
   return response.project;
 }
 
 function deriveDraftName() {
+  if (state.project.company?.trim()) return `${state.project.company.trim()}${state.language === "ja" ? " ニーズ調査" : "智慧安防需求"}`;
   const firstNamedGroup = state.cameraGroups.find((group) => group.name?.trim());
-  if (firstNamedGroup) return `${firstNamedGroup.name.trim()}需求`;
-  return "智慧安防需求配置";
+  if (firstNamedGroup) return `${firstNamedGroup.name.trim()}${state.language === "ja" ? " ニーズ" : "需求"}`;
+  return t("defaultDraftName");
 }
 
-async function loadProject(id) {
+async function loadProject(id, options = {}) {
   const response = await fetchJson(`/api/projects/${encodeURIComponent(id)}`);
   applyProject(response.project);
   renderAll();
-  showToast("已载入草稿。");
+  if (!options.silent) showToast(t("loadedDraft"));
 }
 
 function applyProject(project) {
@@ -511,16 +1043,17 @@ function newProject() {
   state.conditions = emptyConditions();
   state.cameraGroups = [newGroup({ open: false })];
   state.attachments = [];
-  localStorage.removeItem("dubhe:lastProjectId");
+  localStorage.removeItem(LAST_PROJECT_KEY);
   window.history.replaceState({}, "", window.location.pathname);
+  document.body.classList.remove("welcome-active");
   renderAll();
-  showToast("已新建空白配置。");
+  showToast(t("blankCreated"));
 }
 
 async function uploadFiles() {
   const files = [...els.fileInput.files];
   if (!files.length) {
-    showToast("请先选择附件。");
+    showToast(t("chooseAttachment"));
     return;
   }
   const fileIssue = validateFiles(files);
@@ -538,14 +1071,14 @@ async function uploadFiles() {
   });
   applyProject(response.project);
   els.fileInput.value = "";
-  showToast("附件已上传。");
+  showToast(t("uploaded"));
 }
 
 function validateFiles(files) {
   for (const file of files) {
     const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
-    if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) return `不支持的附件类型：${file.name}`;
-    if (file.size > MAX_ATTACHMENT_SIZE) return `附件超过 20MB：${file.name}`;
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) return t("unsupportedFile", { name: file.name });
+    if (file.size > MAX_ATTACHMENT_SIZE) return t("fileTooLarge", { name: file.name });
   }
   return "";
 }
@@ -556,25 +1089,25 @@ async function exportProject(type) {
   const issues = validationIssues();
   if (issues.length) {
     const issueText = issues.map((issue, index) => `${index + 1}. ${issue}`).join("\n");
-    if (!confirm(`以下内容仍未完成：\n\n${issueText}\n\n是否继续导出？`)) return;
+    if (!confirm(t("exportIncompleteConfirm", { issues: issueText }))) return;
   }
   window.location.href = `/api/projects/${encodeURIComponent(state.id)}/export.${type}`;
 }
 
 function renderAttachments() {
   if (!state.attachments.length) {
-    els.attachmentList.innerHTML = `<div class="empty-state compact"><p>暂无附件。</p></div>`;
+    els.attachmentList.innerHTML = `<div class="empty-state compact"><p>${t("noAttachment")}</p></div>`;
     return;
   }
   els.attachmentList.innerHTML = state.attachments.map((file) => `
     <div class="attachment-item">
       <div class="attachment-main">
         <a href="${file.url}" target="_blank" rel="noreferrer">${escapeHtml(file.name)}</a>
-        <span>${formatSize(file.size)} · ${escapeHtml(file.mimeType || "未知类型")} · ${formatDate(file.createdAt)}</span>
+        <span>${formatSize(file.size)} · ${escapeHtml(file.mimeType || "")} · ${formatDate(file.createdAt)}</span>
       </div>
       <div class="attachment-actions">
-        <a class="small-link" href="${file.url}" target="_blank" rel="noreferrer">预览</a>
-        <button class="small danger" type="button" data-action="delete-attachment" data-attachment-id="${file.id}">删除</button>
+        <a class="small-link" href="${file.url}" target="_blank" rel="noreferrer">${t("preview")}</a>
+        <button class="small danger" type="button" data-action="delete-attachment" data-attachment-id="${file.id}">${t("delete")}</button>
       </div>
     </div>
   `).join("");
@@ -582,57 +1115,71 @@ function renderAttachments() {
 
 async function deleteAttachment(attachmentId) {
   if (!state.id || !attachmentId) return;
-  if (!confirm("确定删除这个附件吗？")) return;
+  if (!confirm(t("confirmDeleteAttachment"))) return;
   const response = await fetchJson(`/api/projects/${encodeURIComponent(state.id)}/attachments/${encodeURIComponent(attachmentId)}`, {
     method: "DELETE"
   });
   applyProject(response.project);
-  showToast("附件已删除。");
+  showToast(t("deletedAttachment"));
 }
 
 async function refreshProjectList() {
   const response = await fetchJson("/api/projects");
   state.projects = response.projects || [];
   if (!state.projects.length) {
-    els.projectList.innerHTML = `<span class="muted">暂无本地草稿</span>`;
+    els.projectList.innerHTML = `<span class="muted">${t("noDraft")}</span>`;
     return;
   }
   els.projectList.innerHTML = state.projects.map((project) => `
     <button class="project-item" type="button" data-project-id="${project.id}">
-      <strong>${escapeHtml(project.project_name || "智慧安防需求配置")}</strong>
+      <strong>${escapeHtml(project.company || project.project_name || t("defaultDraftName"))}</strong>
       <span>${formatDate(project.updated_at)}</span>
     </button>
   `).join("");
   els.projectList.querySelectorAll("[data-project-id]").forEach((button) => {
-    button.addEventListener("click", () => loadProject(button.dataset.projectId));
+    button.addEventListener("click", () => {
+      document.body.classList.remove("welcome-active");
+      loadProject(button.dataset.projectId);
+    });
   });
 }
 
 function updateCompletion() {
   const totalGroups = state.cameraGroups.length;
   const completeGroups = state.cameraGroups.filter(isGroupComplete).length;
-  const percent = totalGroups ? Math.round((completeGroups / totalGroups) * 100) : 0;
+  const companyComplete = isCompanyComplete();
+  const totalUnits = totalGroups + 1;
+  const completeUnits = completeGroups + (companyComplete ? 1 : 0);
+  const percent = totalUnits ? Math.round((completeUnits / totalUnits) * 100) : 0;
   const groupsWithInfo = state.cameraGroups.filter((group) => group.name && Number(group.cameraCount) > 0).length;
   const groupsWithFeatures = state.cameraGroups.filter((group) => group.features.length > 0).length;
   const checks = [
-    [`当前 ${totalGroups} 个摄像头组`, totalGroups > 0],
-    [`${completeGroups}/${totalGroups} 组已完成`, totalGroups > 0 && completeGroups === totalGroups],
-    [`${groupsWithInfo}/${totalGroups} 组已填写名称和数量`, totalGroups > 0 && groupsWithInfo === totalGroups],
-    [`${groupsWithFeatures}/${totalGroups} 组已选择功能`, totalGroups > 0 && groupsWithFeatures === totalGroups]
+    [t("checkCompany"), companyComplete],
+    [t("checkGroups", { count: totalGroups }), totalGroups > 0],
+    [t("checkCompleteGroups", { complete: completeGroups, total: totalGroups }), totalGroups > 0 && completeGroups === totalGroups],
+    [t("checkInfoGroups", { complete: groupsWithInfo, total: totalGroups }), totalGroups > 0 && groupsWithInfo === totalGroups],
+    [t("checkFeatureGroups", { complete: groupsWithFeatures, total: totalGroups }), totalGroups > 0 && groupsWithFeatures === totalGroups]
   ];
   els.progressBar.style.width = `${percent}%`;
-  els.progressText.textContent = `${completeGroups}/${totalGroups} 组完成`;
+  els.progressText.textContent = t("progressText", { complete: completeUnits, total: totalUnits });
   els.completionList.innerHTML = checks.map(([label, ok]) => `
     <li class="${ok ? "ok" : ""}"><span>${ok ? "✓" : "○"}</span>${label}</li>
   `).join("");
 }
 
+function isCompanyComplete() {
+  return Boolean(state.project.company?.trim() && state.project.industry?.trim() && state.project.contactPhone?.trim());
+}
+
 function validationIssues() {
   const issues = [];
+  if (!state.project.company?.trim()) issues.push(t("issueCompany"));
+  if (!state.project.industry?.trim()) issues.push(t("issueIndustry"));
+  if (!state.project.contactPhone?.trim()) issues.push(t("issueContact"));
   state.cameraGroups.forEach((group, index) => {
-    if (!group.name) issues.push(`第 ${index + 1} 组名称`);
-    if (!Number(group.cameraCount)) issues.push(`第 ${index + 1} 组摄像头数量`);
-    if (!group.features.length) issues.push(`第 ${index + 1} 组功能选择`);
+    if (!group.name) issues.push(t("issueGroupName", { index: index + 1 }));
+    if (!Number(group.cameraCount)) issues.push(t("issueGroupCount", { index: index + 1 }));
+    if (!group.features.length) issues.push(t("issueGroupFeature", { index: index + 1 }));
   });
   return issues;
 }
@@ -641,7 +1188,7 @@ async function fetchJson(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(body || `请求失败：${response.status}`);
+    throw new Error(body || t("requestFailed", { status: response.status }));
   }
   return response.json();
 }
@@ -667,7 +1214,11 @@ function formatSize(size) {
 
 function formatDate(value) {
   if (!value) return "";
-  return new Date(value).toLocaleString("zh-CN", { hour12: false });
+  return new Date(value).toLocaleString(localeCode(), { hour12: false });
+}
+
+function localeCode() {
+  return state.language === "ja" ? "ja-JP" : "zh-CN";
 }
 
 let toastTimer;

@@ -13,7 +13,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT.parent / "DUBHE智慧安防_成本选型逻辑模型_v1.xlsx"
+OUT = ROOT.parent / "智慧安防_成本选型逻辑模型_v1.xlsx"
 BASE_URL = "http://localhost:4173"
 
 
@@ -71,7 +71,7 @@ def build_workbook():
     ws_notes = wb.create_sheet("09参数说明")
 
     # 01 overview
-    ws_overview["A1"] = "DUBHE 智慧安防成本与硬件选型逻辑模型"
+    ws_overview["A1"] = "智慧安防成本与硬件选型逻辑模型"
     ws_overview["A1"].font = Font(name="Microsoft YaHei", bold=True, size=18, color="07182B")
     ws_overview["A3"] = (
         "这份表不是最终报价单，而是把“客户需求 → 算法/算力 → 硬件 → 固定成本/用量成本”的计算逻辑摊开，"

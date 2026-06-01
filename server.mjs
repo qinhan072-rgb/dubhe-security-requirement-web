@@ -32,6 +32,7 @@ db.exec(`
     address TEXT,
     contact_name TEXT,
     contact_phone TEXT,
+    contact_role TEXT,
     expected_launch TEXT,
     project_status TEXT,
     conditions_json TEXT NOT NULL DEFAULT '{}',
@@ -116,6 +117,11 @@ db.exec(`
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
   );
 `);
+
+const projectColumns = db.prepare("PRAGMA table_info(projects)").all().map((column) => column.name);
+if (!projectColumns.includes("contact_role")) {
+  db.exec("ALTER TABLE projects ADD COLUMN contact_role TEXT");
+}
 
 const yesNo = ["是", "否", "待确认"];
 
@@ -324,12 +330,12 @@ const statements = {
     VALUES (?, ?, ?, ?, ?)
   `),
   insertProject: db.prepare(`
-    INSERT INTO projects (id, company, project_name, industry, address, contact_name, contact_phone, expected_launch, project_status, conditions_json, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO projects (id, company, project_name, industry, address, contact_name, contact_phone, contact_role, expected_launch, project_status, conditions_json, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   updateProject: db.prepare(`
     UPDATE projects
-    SET company = ?, project_name = ?, industry = ?, address = ?, contact_name = ?, contact_phone = ?, expected_launch = ?, project_status = ?, conditions_json = ?, updated_at = ?
+    SET company = ?, project_name = ?, industry = ?, address = ?, contact_name = ?, contact_phone = ?, contact_role = ?, expected_launch = ?, project_status = ?, conditions_json = ?, updated_at = ?
     WHERE id = ?
   `),
   deleteGroups: db.prepare("DELETE FROM camera_groups WHERE project_id = ?"),
@@ -429,6 +435,7 @@ function projectFromRows(projectRow, groupRows, attachmentRows) {
       address: projectRow.address || "",
       contactName: projectRow.contact_name || "",
       contactPhone: projectRow.contact_phone || "",
+      contactRole: projectRow.contact_role || "",
       expectedLaunch: projectRow.expected_launch || "",
       projectStatus: projectRow.project_status || ""
     },
@@ -645,17 +652,20 @@ function saveProject(payload) {
   const groups = Array.isArray(payload.cameraGroups) ? payload.cameraGroups : [];
   const timestamp = nowIso();
   const existing = statements.projectById.get(id);
+  const company = clean(project.company);
+  const projectName = clean(project.projectName) || `${company || "客户"}智慧安防需求`;
 
   db.exec("BEGIN");
   try {
     if (existing) {
       statements.updateProject.run(
-        clean(project.company),
-        clean(project.projectName),
+        company,
+        projectName,
         clean(project.industry),
         clean(project.address),
         clean(project.contactName),
         clean(project.contactPhone),
+        clean(project.contactRole),
         clean(project.expectedLaunch),
         clean(project.projectStatus),
         JSON.stringify(conditions),
@@ -665,12 +675,13 @@ function saveProject(payload) {
     } else {
       statements.insertProject.run(
         id,
-        clean(project.company),
-        clean(project.projectName),
+        company,
+        projectName,
         clean(project.industry),
         clean(project.address),
         clean(project.contactName),
         clean(project.contactPhone),
+        clean(project.contactRole),
         clean(project.expectedLaunch),
         clean(project.projectStatus),
         JSON.stringify(conditions),
@@ -809,11 +820,20 @@ function htmlEscape(value) {
 function buildCsv(project) {
   const lines = [];
   const add = (row) => lines.push(row.map(csvEscape).join(","));
-  add(["DUBHE智慧安防需求导出"]);
+  add(["智慧安防需求导出"]);
   add([]);
   add(["导出信息", "内容"]);
   add(["配置名称", project.project?.projectName || "智慧安防需求配置"]);
   add(["导出时间", new Date().toLocaleString("zh-CN", { hour12: false })]);
+
+  add([]);
+  add(["公司基础信息", "内容"]);
+  add(["公司名称", project.project?.company || ""]);
+  add(["单位性质", project.project?.industry || ""]);
+  add(["联系人", project.project?.contactName || ""]);
+  add(["联系方式", project.project?.contactPhone || ""]);
+  add(["所在城市/区域", project.project?.address || ""]);
+  add(["联系角色", project.project?.contactRole || ""]);
 
   add([]);
   add(["整体约束", "内容"]);
@@ -854,6 +874,9 @@ function featureNames(featureIds) {
 function buildCustomerDoc(project) {
   const conditions = Object.entries(project.conditions || {}).filter(([, value]) => String(value || "").trim());
   const unresolved = [];
+  if (!project.project?.company) unresolved.push("未填写公司名称");
+  if (!project.project?.industry) unresolved.push("未选择单位性质");
+  if (!project.project?.contactPhone) unresolved.push("未填写联系方式");
   project.cameraGroups.forEach((group, index) => {
     if (!group.name) unresolved.push(`第 ${index + 1} 组未填写组名`);
     if (!Number(group.cameraCount)) unresolved.push(`第 ${index + 1} 组未填写摄像头数量`);
@@ -864,7 +887,7 @@ function buildCustomerDoc(project) {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>DUBHE智慧安防需求确认单</title>
+  <title>智慧安防需求确认单</title>
   <style>
     body { font-family: "Microsoft YaHei", Arial, sans-serif; color: #07182b; line-height: 1.55; }
     h1 { font-size: 26px; margin: 0 0 8px; }
@@ -876,8 +899,20 @@ function buildCustomerDoc(project) {
   </style>
 </head>
 <body>
-  <h1>DUBHE智慧安防需求确认单</h1>
+  <h1>智慧安防需求确认单</h1>
   <p class="muted">导出时间：${htmlEscape(exportedAt)}　配置名称：${htmlEscape(project.project?.projectName || "智慧安防需求配置")}</p>
+
+  <h2>公司基础信息</h2>
+  <table>
+    <tbody>
+      <tr><th>公司名称</th><td>${htmlEscape(project.project?.company || "")}</td></tr>
+      <tr><th>单位性质</th><td>${htmlEscape(project.project?.industry || "")}</td></tr>
+      <tr><th>联系人</th><td>${htmlEscape(project.project?.contactName || "")}</td></tr>
+      <tr><th>联系方式</th><td>${htmlEscape(project.project?.contactPhone || "")}</td></tr>
+      <tr><th>所在城市/区域</th><td>${htmlEscape(project.project?.address || "")}</td></tr>
+      <tr><th>联系角色</th><td>${htmlEscape(project.project?.contactRole || "")}</td></tr>
+    </tbody>
+  </table>
 
   <h2>摄像头组与识别功能</h2>
   <table>
@@ -928,7 +963,7 @@ function serveExport(res, project, type) {
     const body = JSON.stringify(project, null, 2);
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="dubhe-requirement-${project.id}.json"`
+      "Content-Disposition": `attachment; filename="security-requirement-${project.id}.json"`
     });
     res.end(body);
     return;
@@ -937,7 +972,7 @@ function serveExport(res, project, type) {
     const body = `\ufeff${buildCustomerDoc(project)}`;
     res.writeHead(200, {
       "Content-Type": "application/msword; charset=utf-8",
-      "Content-Disposition": `attachment; filename="dubhe-requirement-summary-${project.id}.doc"`
+      "Content-Disposition": `attachment; filename="security-requirement-summary-${project.id}.doc"`
     });
     res.end(body);
     return;
@@ -945,7 +980,7 @@ function serveExport(res, project, type) {
   const body = buildCsv(project);
   res.writeHead(200, {
     "Content-Type": "text/csv; charset=utf-8",
-    "Content-Disposition": `attachment; filename="dubhe-requirement-${project.id}.csv"`
+    "Content-Disposition": `attachment; filename="security-requirement-${project.id}.csv"`
   });
   res.end(body);
 }
@@ -1064,5 +1099,5 @@ async function router(req, res) {
 }
 
 createServer(router).listen(PORT, () => {
-  console.log(`DUBHE requirement app running at http://localhost:${PORT}`);
+  console.log(`Security requirement app running at http://localhost:${PORT}`);
 });

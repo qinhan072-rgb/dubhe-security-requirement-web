@@ -3,119 +3,180 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DUBHE 智慧安防需求配置</title>
+    <title data-i18n="metaTitle">智慧安防需求调研</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
+  <body class="welcome-active">
+    <button class="language-switch" id="langToggleBtn" type="button" aria-label="切换语言">日本語</button>
+
+    <section class="welcome-screen" id="welcomePage">
+      <div class="welcome-card">
+        <span class="eyebrow" data-i18n="welcomeKicker">智慧安防需求调研</span>
+        <h1 data-i18n="welcomeTitle">欢迎填写智慧安防需求调研</h1>
+        <p data-i18n="welcomeLead">请按提示填写公司信息、摄像头组和识别需求。提交后，我们会据此确认接入方式、功能范围和部署方案。</p>
+        <button class="primary welcome-start" id="startSurveyBtn" type="button" data-i18n="startSurvey">开始</button>
+      </div>
+    </section>
+
     <header class="topbar">
       <div class="brand-block">
-        <div class="brand">DUBHE Security</div>
-        <h1>智慧安防需求配置</h1>
+        <div class="brand" data-i18n="brandLabel">需求调研</div>
+        <h1 data-i18n="appTitle">智慧安防需求调研</h1>
       </div>
       <div class="top-actions">
-        <button class="ghost" id="newProjectBtn" type="button">新建</button>
+        <button class="ghost" id="newProjectBtn" type="button" data-i18n="newProject">新建</button>
         <div class="export-combo">
-          <button class="ghost" id="exportMenuBtn" type="button" aria-expanded="false">导出</button>
+          <button class="ghost" id="exportMenuBtn" type="button" aria-expanded="false" data-i18n="export">导出</button>
           <div class="export-menu" id="exportMenu" hidden>
-            <button type="button" id="exportCsvBtn">CSV 文件</button>
-            <button type="button" id="exportJsonBtn">JSON 文件</button>
-            <button type="button" id="exportWordBtn">客户确认版 Word</button>
+            <button type="button" id="exportCsvBtn" data-i18n="exportCsv">CSV 文件</button>
+            <button type="button" id="exportJsonBtn" data-i18n="exportJson">JSON 文件</button>
+            <button type="button" id="exportWordBtn" data-i18n="exportWord">客户确认版 Word</button>
           </div>
         </div>
-        <button class="primary" id="saveBtn" type="button">保存</button>
+        <button class="primary" id="saveBtn" type="button" data-i18n="save">保存</button>
       </div>
     </header>
 
-    <main class="layout">
+    <main class="layout" id="surveyLayout">
       <aside class="sidebar">
         <div class="panel">
-          <div class="panel-title">填写进度</div>
+          <div class="panel-title" data-i18n="progressTitle">填写进度</div>
           <div class="progress">
             <div class="progress-bar" id="progressBar"></div>
           </div>
-          <div class="progress-text" id="progressText">准备中</div>
+          <div class="progress-text" id="progressText" data-i18n="progressReady">准备中</div>
           <ul class="checklist" id="completionList"></ul>
         </div>
 
         <div class="panel">
-          <div class="panel-title">填写路径</div>
+          <div class="panel-title" data-i18n="pathTitle">填写路径</div>
           <nav class="side-nav">
-            <a href="#cameraCard">1. 摄像头组</a>
-            <a href="#conditionsCard">2. 整体约束</a>
-            <a href="#attachmentCard">3. 上传附件</a>
+            <a href="#companyCard" data-i18n="navCompany">1. 公司信息</a>
+            <a href="#cameraCard" data-i18n="navCamera">2. 摄像头组</a>
+            <a href="#conditionsCard" data-i18n="navConditions">3. 整体约束</a>
+            <a href="#attachmentCard" data-i18n="navAttachments">4. 上传附件</a>
           </nav>
         </div>
 
         <div class="panel">
-          <div class="panel-title">已有草稿</div>
+          <div class="panel-title" data-i18n="draftTitle">已有草稿</div>
           <div id="projectList" class="project-list"></div>
         </div>
       </aside>
 
       <section class="content">
-        <section class="card" id="cameraCard">
+        <section class="card" id="companyCard">
           <div class="section-heading">
             <span class="step">01</span>
             <div>
-              <h2>摄像头组与功能选择</h2>
-              <p>摄像头型号及用途相同放在同一组，若有差异则新增另一组。</p>
+              <h2 data-i18n="companyTitle">公司基础信息</h2>
+              <p data-i18n="companyDesc">仅用于联系和识别客户类型，不填写项目建设周期、预算等商务信息。</p>
+            </div>
+          </div>
+          <form class="grid-form compact-form" id="companyForm">
+            <label><span data-i18n="companyName">公司名称</span>
+              <input data-project="company" data-i18n-placeholder="companyNamePh" placeholder="例如：某某制造有限公司" />
+            </label>
+            <label><span data-i18n="industry">单位性质</span>
+              <select data-project="industry">
+                <option value="" data-i18n="selectPlaceholder">请选择</option>
+                <option value="生产厂区 / 制造业">生产厂区 / 制造业</option>
+                <option value="物流园区 / 仓储">物流园区 / 仓储</option>
+                <option value="产业园区 / 写字楼">产业园区 / 写字楼</option>
+                <option value="商超 / 商业综合体">商超 / 商业综合体</option>
+                <option value="能源化工 / 高危场所">能源化工 / 高危场所</option>
+                <option value="学校 / 医院 / 公共机构">学校 / 医院 / 公共机构</option>
+                <option value="物业 / 社区">物业 / 社区</option>
+                <option value="其他">其他</option>
+                <option value="待确认">待确认</option>
+              </select>
+            </label>
+            <label><span data-i18n="contactName">联系人</span>
+              <input data-project="contactName" data-i18n-placeholder="contactNamePh" placeholder="姓名" />
+            </label>
+            <label><span data-i18n="contactPhone">联系方式</span>
+              <input data-project="contactPhone" data-i18n-placeholder="contactPhonePh" placeholder="手机号 / 微信 / 邮箱" />
+            </label>
+            <label><span data-i18n="address">所在城市/区域</span>
+              <input data-project="address" data-i18n-placeholder="addressPh" placeholder="例如：武汉市 / 某某园区" />
+            </label>
+            <label><span data-i18n="contactRole">联系角色</span>
+              <input data-project="contactRole" data-i18n-placeholder="contactRolePh" placeholder="例如：安全负责人 / 设备负责人 / 项目联系人" />
+            </label>
+          </form>
+        </section>
+
+        <section class="card" id="cameraCard">
+          <div class="section-heading">
+            <span class="step">02</span>
+            <div>
+              <h2 data-i18n="cameraTitle">摄像头组与功能选择</h2>
+              <p data-i18n="cameraDesc">摄像头型号及用途相同放在同一组，若有差异则新增另一组。</p>
             </div>
           </div>
           <div class="group-list" id="cameraGroupList"></div>
           <button class="add-group-large" id="addGroupLargeBtn" type="button">
             <span>+</span>
-            <strong>新增另一组摄像头</strong>
+            <strong data-i18n="addAnotherGroup">新增另一组摄像头</strong>
           </button>
         </section>
 
         <section class="card" id="conditionsCard">
           <div class="section-heading compact">
-            <span class="step">02</span>
+            <span class="step">03</span>
             <div>
-              <h2>整体约束</h2>
-              <p>以下信息影响 AI 接入、数据安全和系统对接；不确定时可选择待确认。</p>
+              <h2 data-i18n="conditionsTitle">整体约束</h2>
+              <p data-i18n="conditionsDesc">以下信息影响 AI 接入、数据安全和系统对接；不确定时可选择待确认。</p>
             </div>
           </div>
           <form class="grid-form compact-form" id="conditionsForm">
-            <label>系统网络环境
+            <label><span data-i18n="internetPolicy">系统网络环境</span>
               <select data-condition="internetPolicy">
-                <option value="">请选择</option>
-                <option>可访问互联网</option>
-                <option>仅内网</option>
-                <option>需审批后访问外网</option>
-                <option>完全离线</option>
-                <option>待确认</option>
+                <option value="" data-i18n="selectPlaceholder">请选择</option>
+                <option value="可访问互联网">可访问互联网</option>
+                <option value="仅内网">仅内网</option>
+                <option value="需审批后访问外网">需审批后访问外网</option>
+                <option value="完全离线">完全离线</option>
+                <option value="待确认">待确认</option>
               </select>
             </label>
-            <label>AI方式限制
+            <label><span data-i18n="aiPolicy">AI方式限制</span>
               <select data-condition="aiPolicy">
-                <option value="">请选择</option>
-                <option>可调用外部AI服务</option>
-                <option>本地优先</option>
-                <option>只能本地</option>
-                <option>待确认</option>
+                <option value="" data-i18n="selectPlaceholder">请选择</option>
+                <option value="可调用外部AI服务">可调用外部AI服务</option>
+                <option value="本地优先">本地优先</option>
+                <option value="只能本地">只能本地</option>
+                <option value="待确认">待确认</option>
               </select>
             </label>
-            <label>数据安全/保密要求<input data-condition="compliance" placeholder="没有可写无；有要求请简述" /></label>
-            <label>消息通知对接<input data-condition="messageIntegration" placeholder="企业微信 / 钉钉 / 飞书 / 短信 / 不需要" /></label>
-            <label>业务系统对接<input data-condition="systemIntegration" placeholder="OA / 工单 / 安防平台 / 不需要" /></label>
-            <label class="span-2">其他说明<textarea data-condition="extraNotes" placeholder="标准菜单外的识别目标、特殊流程或补充说明"></textarea></label>
+            <label><span data-i18n="compliance">数据安全/保密要求</span>
+              <input data-condition="compliance" data-i18n-placeholder="compliancePh" placeholder="没有可写无；有要求请简述" />
+            </label>
+            <label><span data-i18n="messageIntegration">消息通知对接</span>
+              <input data-condition="messageIntegration" data-i18n-placeholder="messageIntegrationPh" placeholder="企业微信 / 钉钉 / 飞书 / 短信 / 不需要" />
+            </label>
+            <label><span data-i18n="systemIntegration">业务系统对接</span>
+              <input data-condition="systemIntegration" data-i18n-placeholder="systemIntegrationPh" placeholder="OA / 工单 / 安防平台 / 不需要" />
+            </label>
+            <label class="span-2"><span data-i18n="extraNotes">其他说明</span>
+              <textarea data-condition="extraNotes" data-i18n-placeholder="extraNotesPh" placeholder="标准菜单外的识别目标、特殊流程或补充说明"></textarea>
+            </label>
           </form>
         </section>
 
         <section class="card attachment-card" id="attachmentCard">
           <div class="section-heading compact">
-            <span class="step">03</span>
+            <span class="step">04</span>
             <div>
-              <h2>上传附件</h2>
-              <p>可上传现场平面图、摄像头清单或其他资料。</p>
+              <h2 data-i18n="attachmentTitle">上传附件</h2>
+              <p data-i18n="attachmentDesc">可上传现场平面图、摄像头清单或其他资料。</p>
             </div>
           </div>
           <div class="attachment-row">
             <input id="fileInput" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.rar" />
-            <button class="ghost" id="uploadBtn" type="button">上传附件</button>
+            <button class="ghost" id="uploadBtn" type="button" data-i18n="uploadAttachment">上传附件</button>
           </div>
-          <p class="attachment-note">支持图片、PDF、Office、CSV、TXT、压缩包，单个文件不超过 20MB。</p>
+          <p class="attachment-note" data-i18n="attachmentNote">支持图片、PDF、Office、CSV、TXT、压缩包，单个文件不超过 20MB。</p>
           <div id="attachmentList" class="attachment-list"></div>
         </section>
       </section>
@@ -123,8 +184,8 @@
 
     <template id="emptyGroupTemplate">
       <div class="empty-state">
-        <h3>还没有摄像头组</h3>
-        <p>从下方新增第一组摄像头。</p>
+        <h3 data-i18n="emptyGroupTitle">还没有摄像头组</h3>
+        <p data-i18n="emptyGroupDesc">从下方新增第一组摄像头。</p>
       </div>
     </template>
 

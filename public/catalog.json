@@ -1,0 +1,544 @@
+{
+  "featureCatalog": [
+    {
+      "id": "person",
+      "name": "人员与行为",
+      "items": [
+        {
+          "id": "person-intrusion",
+          "name": "人员闯入/禁区进入",
+          "description": "人员进入不应进入的区域。",
+          "keywords": [
+            "门岗",
+            "围栏",
+            "周界",
+            "仓库",
+            "危险",
+            "禁区"
+          ]
+        },
+        {
+          "id": "line-crossing",
+          "name": "越线检测",
+          "description": "识别人员或目标跨越指定边界。",
+          "keywords": [
+            "围栏",
+            "边界",
+            "周界",
+            "禁区"
+          ]
+        },
+        {
+          "id": "crowd",
+          "name": "人员聚集",
+          "description": "识别局部区域人员聚集。",
+          "keywords": [
+            "食堂",
+            "门岗",
+            "入口",
+            "宿舍",
+            "公共"
+          ]
+        },
+        {
+          "id": "loitering",
+          "name": "长时间滞留/异常徘徊",
+          "description": "识别人员长时间停留或反复徘徊。",
+          "keywords": [
+            "门岗",
+            "周界",
+            "后门",
+            "入口",
+            "围栏"
+          ]
+        },
+        {
+          "id": "fall",
+          "name": "人员倒地/摔倒",
+          "description": "识别人员倒地、摔倒等异常姿态。",
+          "keywords": [
+            "公共",
+            "楼道",
+            "高危",
+            "偏僻"
+          ]
+        },
+        {
+          "id": "conflict",
+          "name": "疑似冲突行为",
+          "description": "识别明显肢体冲突等异常行为。",
+          "keywords": [
+            "门岗",
+            "停车",
+            "公共",
+            "宿舍"
+          ]
+        },
+        {
+          "id": "absence",
+          "name": "岗位无人/离岗",
+          "description": "识别值守点或关键岗位无人。",
+          "keywords": [
+            "值守",
+            "操作台",
+            "监控",
+            "岗位"
+          ]
+        },
+        {
+          "id": "sleeping",
+          "name": "睡岗/趴睡",
+          "description": "识别值守人员趴睡、睡岗。",
+          "keywords": [
+            "值守",
+            "操作台",
+            "岗位"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ppe",
+      "name": "作业规范与防护",
+      "items": [
+        {
+          "id": "helmet",
+          "name": "未戴安全帽",
+          "description": "识别未佩戴安全帽。",
+          "keywords": [
+            "车间",
+            "施工",
+            "检修",
+            "生产",
+            "设备"
+          ]
+        },
+        {
+          "id": "vest",
+          "name": "未穿工服/反光背心",
+          "description": "识别未穿指定工服或反光背心。",
+          "keywords": [
+            "车间",
+            "施工",
+            "装卸",
+            "物流"
+          ]
+        },
+        {
+          "id": "other-ppe",
+          "name": "其他防护用品未佩戴",
+          "description": "如口罩、护目镜、手套等，需结合现场样本确认。",
+          "keywords": [
+            "焊接",
+            "化工",
+            "危险",
+            "高危"
+          ]
+        },
+        {
+          "id": "danger-zone",
+          "name": "危险区域靠近/闯入",
+          "description": "识别人员靠近或进入危险区域。",
+          "keywords": [
+            "设备",
+            "机器人",
+            "危险",
+            "禁入",
+            "检修"
+          ]
+        },
+        {
+          "id": "height-work",
+          "name": "登高/临边区域人员识别",
+          "description": "识别登高、临边、屋面等区域人员。",
+          "keywords": [
+            "高空",
+            "登高",
+            "临边",
+            "屋面",
+            "脚手架"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fire",
+      "name": "消防与烟火",
+      "items": [
+        {
+          "id": "smoking",
+          "name": "抽烟识别",
+          "description": "识别人员抽烟行为。",
+          "keywords": [
+            "车间",
+            "仓库",
+            "休息",
+            "危险品"
+          ]
+        },
+        {
+          "id": "flame",
+          "name": "明火/火焰识别",
+          "description": "识别明显火焰或明火。",
+          "keywords": [
+            "动火",
+            "配电",
+            "仓库",
+            "危险品"
+          ]
+        },
+        {
+          "id": "smoke",
+          "name": "烟雾/浓烟识别",
+          "description": "识别烟雾、浓烟等视觉现象。",
+          "keywords": [
+            "仓库",
+            "配电",
+            "封闭",
+            "通道"
+          ]
+        },
+        {
+          "id": "fire-lane-block",
+          "name": "消防通道占用",
+          "description": "识别消防通道或消防车道被占用。",
+          "keywords": [
+            "消防",
+            "通道",
+            "道路"
+          ]
+        },
+        {
+          "id": "exit-block",
+          "name": "安全出口堵塞",
+          "description": "识别安全出口、疏散口被堵塞。",
+          "keywords": [
+            "安全出口",
+            "疏散",
+            "楼梯"
+          ]
+        },
+        {
+          "id": "fire-equipment-block",
+          "name": "消防设施遮挡",
+          "description": "识别消火栓、灭火器、消防箱周边遮挡。",
+          "keywords": [
+            "消防设施",
+            "消火栓",
+            "灭火器"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vehicle",
+      "name": "车辆与道路",
+      "items": [
+        {
+          "id": "plate",
+          "name": "车辆识别/车牌识别",
+          "description": "识别车辆和车牌。",
+          "keywords": [
+            "门岗",
+            "出入口",
+            "停车",
+            "物流门"
+          ]
+        },
+        {
+          "id": "illegal-parking",
+          "name": "车辆违停",
+          "description": "识别车辆停在禁停区域。",
+          "keywords": [
+            "道路",
+            "门岗",
+            "消防",
+            "临停"
+          ]
+        },
+        {
+          "id": "vehicle-stay",
+          "name": "车辆停留超时",
+          "description": "识别车辆在指定区域停留超时。",
+          "keywords": [
+            "装卸",
+            "门岗",
+            "临停",
+            "物流"
+          ]
+        },
+        {
+          "id": "reverse-driving",
+          "name": "车辆逆行",
+          "description": "识别车辆逆向行驶。",
+          "keywords": [
+            "道路",
+            "单行",
+            "坡道"
+          ]
+        },
+        {
+          "id": "mixed-traffic",
+          "name": "人车混行",
+          "description": "识别人员与车辆在重点通道混行。",
+          "keywords": [
+            "物流",
+            "叉车",
+            "主路",
+            "装卸"
+          ]
+        },
+        {
+          "id": "traffic-count",
+          "name": "车流统计",
+          "description": "统计车辆进出或车流量。",
+          "keywords": [
+            "出入口",
+            "道路",
+            "停车"
+          ]
+        },
+        {
+          "id": "bike-parking",
+          "name": "非机动车乱停",
+          "description": "识别电动车、自行车等乱停。",
+          "keywords": [
+            "楼栋",
+            "消防",
+            "入口",
+            "停车"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "logistics",
+      "name": "仓储与物流",
+      "items": [
+        {
+          "id": "cargo-block",
+          "name": "货物/托盘占道",
+          "description": "识别货物、托盘占用通道。",
+          "keywords": [
+            "仓库",
+            "货梯",
+            "托盘",
+            "通道"
+          ]
+        },
+        {
+          "id": "cargo-overline",
+          "name": "货物堆放超线/堆放异常",
+          "description": "识别越线堆放或异常堆放。",
+          "keywords": [
+            "仓库",
+            "黄线",
+            "消防线",
+            "货架"
+          ]
+        },
+        {
+          "id": "dock-occupied",
+          "name": "装卸区占用",
+          "description": "识别装卸口、月台被占用。",
+          "keywords": [
+            "装卸",
+            "月台",
+            "物流"
+          ]
+        },
+        {
+          "id": "forklift-block",
+          "name": "叉车/车辆占道或违停",
+          "description": "识别叉车或车辆占道、违停。",
+          "keywords": [
+            "叉车",
+            "仓库",
+            "物流",
+            "通道"
+          ]
+        },
+        {
+          "id": "shelf-aisle-block",
+          "name": "货架通道堵塞",
+          "description": "识别货架区、拣货通道堵塞。",
+          "keywords": [
+            "货架",
+            "仓库",
+            "拣货"
+          ]
+        },
+        {
+          "id": "warehouse-restricted",
+          "name": "人员进入仓库禁区",
+          "description": "识别人员进入仓库限制区域。",
+          "keywords": [
+            "仓库",
+            "危险品",
+            "禁区"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "perimeter",
+      "name": "周界与区域",
+      "items": [
+        {
+          "id": "perimeter-intrusion",
+          "name": "周界入侵/越线",
+          "description": "识别围栏、围墙、边界入侵。",
+          "keywords": [
+            "周界",
+            "围栏",
+            "围墙",
+            "后门"
+          ]
+        },
+        {
+          "id": "climbing",
+          "name": "翻越/攀爬",
+          "description": "识别翻越围栏、攀爬墙体等行为。",
+          "keywords": [
+            "围栏",
+            "围墙",
+            "周界"
+          ]
+        },
+        {
+          "id": "night-intrusion",
+          "name": "夜间周界入侵",
+          "description": "识别夜间边界区域入侵。",
+          "keywords": [
+            "夜间",
+            "周界",
+            "后门",
+            "偏僻"
+          ]
+        },
+        {
+          "id": "area-stay",
+          "name": "边界附近长时间滞留",
+          "description": "识别边界附近长时间停留。",
+          "keywords": [
+            "门岗",
+            "围栏",
+            "周界"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "environment",
+      "name": "环境与秩序",
+      "items": [
+        {
+          "id": "trash",
+          "name": "垃圾/杂物堆放",
+          "description": "识别垃圾、杂物堆放。",
+          "keywords": [
+            "公共",
+            "仓库",
+            "通道",
+            "角落"
+          ]
+        },
+        {
+          "id": "channel-block",
+          "name": "通道堵塞/物品占道",
+          "description": "识别通道、走廊、货梯口被占用。",
+          "keywords": [
+            "通道",
+            "货梯",
+            "消防",
+            "仓库"
+          ]
+        },
+        {
+          "id": "water",
+          "name": "水浸/积水",
+          "description": "识别明显积水、水浸风险。",
+          "keywords": [
+            "地下",
+            "仓库",
+            "机房"
+          ]
+        },
+        {
+          "id": "custom",
+          "name": "其他自定义识别",
+          "description": "请描述希望识别的目标和判断标准。",
+          "keywords": [
+            "其他",
+            "自定义"
+          ]
+        }
+      ]
+    }
+  ],
+  "options": {
+    "yesNo": [
+      "是",
+      "否",
+      "待确认"
+    ],
+    "vendors": [
+      "海康",
+      "大华",
+      "宇视",
+      "华为",
+      "其他",
+      "不清楚"
+    ],
+    "resolutions": [
+      "720P",
+      "1080P",
+      "2K",
+      "4K",
+      "混合",
+      "不清楚"
+    ],
+    "accessMethods": [
+      "RTSP",
+      "ONVIF",
+      "GB28181",
+      "厂商SDK",
+      "平台API",
+      "不清楚"
+    ],
+    "internetPolicies": [
+      "可访问互联网",
+      "仅内网",
+      "需审批后访问外网",
+      "完全离线",
+      "待确认"
+    ],
+    "aiPolicies": [
+      "可调用外部AI服务",
+      "本地优先",
+      "只能本地",
+      "待确认"
+    ],
+    "dataPolicies": [
+      "允许",
+      "脱敏后允许",
+      "不允许",
+      "需审批",
+      "待确认"
+    ],
+    "projectModes": [
+      "试点验证",
+      "一期建设",
+      "全园区建设",
+      "多园区建设",
+      "分阶段建设",
+      "待确认"
+    ],
+    "paymentModes": [
+      "项目制",
+      "按月服务",
+      "项目+服务",
+      "待确认"
+    ]
+  }
+}
