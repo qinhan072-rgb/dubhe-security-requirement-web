@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/vercel-build.mjs",
     "start": "node server.mjs",
     "dev": "node --watch server.mjs"
   },
